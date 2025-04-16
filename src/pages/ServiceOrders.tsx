@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole, ServiceOrderStatus, ServiceType } from "@/types";
-import { supabase } from "@/lib/supabase";
+import { supabase, checkSupabaseConnection } from "@/lib/supabase";
 import {
   FileText,
   Plus,
@@ -86,6 +85,24 @@ const ServiceOrders = () => {
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedWorkshops, setSelectedWorkshops] = useState<string[]>([]);
+  const [connectionChecked, setConnectionChecked] = useState(false);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      const result = await checkSupabaseConnection();
+      setConnectionChecked(true);
+      
+      if (!result) {
+        toast({
+          title: "Erro de conexão",
+          description: "Não foi possível conectar ao banco de dados. Verifique suas credenciais.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    checkConnection();
+  }, []);
 
   if (!user) return null;
 
@@ -100,15 +117,22 @@ const ServiceOrders = () => {
     queryFn: async () => {
       if (!isQueryAdmin && !isGeneralAdmin) return [];
       
+      console.log('Fetching city halls');
+      
       const { data, error } = await supabase
         .from('city_halls')
         .select('id, tradeName')
         .order('tradeName');
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching city halls:', error);
+        throw error;
+      }
+      
+      console.log('City halls data:', data);
       return data || [];
     },
-    enabled: isQueryAdmin || isGeneralAdmin
+    enabled: (isQueryAdmin || isGeneralAdmin) && connectionChecked
   });
 
   // Query to get all accredited workshops for a city hall
@@ -123,21 +147,32 @@ const ServiceOrders = () => {
         .filter('accreditedCityHalls', 'cs', `{${user.id}}`)
         .order('tradeName');
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching workshops:', error);
+        throw error;
+      }
+      
       return data || [];
     },
-    enabled: isCityHall && !!selectedOrder
+    enabled: isCityHall && !!selectedOrder && connectionChecked
   });
 
   // Main query to get service orders based on role
   const { data: serviceOrders, isLoading: ordersLoading } = useQuery({
     queryKey: ['service-orders', user.role, user.id, statusFilter, cityHallFilter],
     queryFn: async () => {
+      console.log('Fetching service orders with params:', { 
+        role: user.role, 
+        userId: user.id,
+        statusFilter,
+        cityHallFilter
+      });
+      
       let query = supabase
         .from('service_orders')
         .select(`
           *,
-          city_halls:cityHallId(tradeName),
+          city_halls(tradeName),
           quotes(id)
         `);
       
@@ -164,10 +199,15 @@ const ServiceOrders = () => {
       
       const { data, error } = await query;
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching service orders:', error);
+        throw error;
+      }
       
+      console.log('Service orders data:', data);
       return data || [];
-    }
+    },
+    enabled: !!user && connectionChecked
   });
 
   // Mutation to send service order to workshops

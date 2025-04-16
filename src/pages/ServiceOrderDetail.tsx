@@ -54,16 +54,23 @@ const ServiceOrderDetail = () => {
     queryFn: async () => {
       if (!id) return null;
       
+      console.log('Fetching service order details for ID:', id);
+      
       const { data, error } = await supabase
         .from('service_orders')
         .select(`
           *,
-          city_halls:cityHallId(tradeName, corporateName)
+          city_halls(tradeName, corporateName)
         `)
         .eq('id', id)
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching service order:', error);
+        throw error;
+      }
+      
+      console.log('Service order data:', data);
       return data;
     },
     enabled: !!id

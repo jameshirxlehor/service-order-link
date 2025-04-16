@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { checkSupabaseConnection } from "@/lib/supabase";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -10,6 +11,12 @@ const Index = () => {
   
   useEffect(() => {
     console.log("Index page - Auth state:", { isAuthenticated, isLoading });
+    
+    const checkConnection = async () => {
+      await checkSupabaseConnection();
+    };
+    
+    checkConnection();
     
     if (!isLoading) {
       if (isAuthenticated) {
