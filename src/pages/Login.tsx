@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -38,7 +38,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,12 +50,13 @@ export default function Login() {
     },
   });
 
-  // Redirect if already logged in
-  if (isAuthenticated) {
-    navigate("/dashboard");
-    return null;
-  }
-
+  // Check authentication status and redirect if authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+  
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     
@@ -67,7 +68,7 @@ export default function Login() {
         description: "Bem-vindo ao Sistema de Gestão de Ordens de Serviço",
       });
       
-      navigate("/dashboard");
+      // The useEffect will handle the redirect once isAuthenticated changes
     } catch (error) {
       // Error is handled in the login function
       console.error("Login error:", error);
@@ -75,6 +76,11 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  // If already authenticated, don't render the login form (useEffect will redirect)
+  if (isAuthenticated && !isLoading) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20 p-4">
@@ -127,8 +133,8 @@ export default function Login() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+              <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
+                {isLoading || authLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...

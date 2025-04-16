@@ -4,6 +4,7 @@ import { User } from "@/types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { createDefaultProfile, fetchUserProfile, fetchUserData } from "@/services/userProfileService";
 import { toast } from "@/hooks/use-toast";
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
