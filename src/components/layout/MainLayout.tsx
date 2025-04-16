@@ -6,26 +6,25 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { UserRole } from "@/types";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 const MainLayout = ({ children }: MainLayoutProps) => {
-  const { user, isLoading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    console.log("MainLayout - Auth state:", { user, isLoading });
+    console.log("MainLayout - Auth state:", { user, isLoading, isAuthenticated });
     
-    if (!isLoading && !user) {
+    if (!isLoading && !isAuthenticated) {
       console.log("User not authenticated, redirecting to login");
       navigate("/login", { replace: true });
     }
-  }, [user, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -40,12 +39,12 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   }
 
   // Return null while redirecting
-  if (!user) {
+  if (!isAuthenticated) {
     return null;
   }
 
   let roleText = "";
-  switch (user.role) {
+  switch (user?.role) {
     case UserRole.CITY_HALL:
       roleText = "City Hall";
       break;

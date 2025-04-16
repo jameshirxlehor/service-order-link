@@ -41,7 +41,7 @@ export default function Login() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -65,7 +65,7 @@ export default function Login() {
   }, [isAuthenticated, authLoading, navigate, from]);
   
   const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     try {
       console.log("Submitting login form");
@@ -81,7 +81,7 @@ export default function Login() {
       // Error is handled in the login function
       console.error("Login form submission error:", error);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -115,7 +115,7 @@ export default function Login() {
                       <Input
                         placeholder="seu@email.com"
                         type="email"
-                        disabled={isLoading || authLoading}
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -133,7 +133,7 @@ export default function Login() {
                       <Input
                         placeholder="••••••••"
                         type="password"
-                        disabled={isLoading || authLoading}
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -141,8 +141,8 @@ export default function Login() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
-                {isLoading || authLoading ? (
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...
