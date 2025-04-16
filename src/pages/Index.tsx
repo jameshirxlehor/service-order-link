@@ -1,19 +1,28 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
   
   useEffect(() => {
-    // Redirect to login page after a brief moment
+    // If user is already authenticated, redirect to dashboard
+    if (isAuthenticated && !isLoading) {
+      console.log("Index page - User is authenticated, redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    
+    // Otherwise, redirect to login page after a brief moment
     const timer = setTimeout(() => {
-      navigate("/login");
+      console.log("Index page - Redirecting to login");
+      navigate("/login", { replace: true });
     }, 1500);
     
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, isAuthenticated, isLoading]);
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
@@ -28,7 +37,7 @@ const Index = () => {
           Gerenciamento eficiente de ordens de serviço e orçamentos
         </p>
         <div className="mt-6 text-muted-foreground text-sm">
-          Redirecionando para login...
+          Redirecionando para {isAuthenticated ? "dashboard" : "login"}...
         </div>
       </div>
     </div>

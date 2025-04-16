@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!authUser) return;
     
     try {
-      // Don't set isLoading here since it's already set in the parent function
       console.log("Fetching user profile for:", authUser.email);
       const profileData = await fetchUserProfile(authUser);
       
@@ -83,9 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Track when auth state is initialized
+    let isInitialized = false;
+
     const { data: { subscription } } = auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event, session);
+        
+        // Set initialized on first auth event
+        if (!isInitialized) {
+          isInitialized = true;
+        }
+        
         if (event === "SIGNED_IN" && session) {
           setIsLoading(true);
           console.log("User signed in, fetching profile");
@@ -98,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    // Only run checkSession once on mount
     checkSession();
 
     return () => {
@@ -169,6 +178,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   };
+
+  // Debug authentication state changes
+  useEffect(() => {
+    console.log("Auth Provider - State updated:", { 
+      isAuthenticated: !!user, 
+      isLoading, 
+      user: user ? `${user.email} (${user.role})` : null 
+    });
+  }, [user, isLoading]);
 
   return (
     <AuthContext.Provider

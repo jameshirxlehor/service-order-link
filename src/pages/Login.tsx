@@ -60,7 +60,10 @@ export default function Login() {
     
     if (isAuthenticated && !authLoading) {
       console.log("User is authenticated, redirecting to:", from);
-      navigate(from, { replace: true });
+      // Force redirect with a small delay to ensure state has settled
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 100);
     }
   }, [isAuthenticated, authLoading, navigate, from]);
   
@@ -70,12 +73,14 @@ export default function Login() {
       console.log("Submitting login form with:", data);
       await login(data.email, data.password);
       
+      // Add explicit navigation after successful login
+      console.log("Login successful, will redirect to:", from);
+      
       toast({
         title: "Login bem-sucedido",
         description: "Bem-vindo ao Sistema de Gestão de Ordens de Serviço",
       });
       
-      // The useEffect will handle the redirect once isAuthenticated changes
     } catch (error) {
       // Error is handled in the login function
       console.error("Login form submission error:", error);
