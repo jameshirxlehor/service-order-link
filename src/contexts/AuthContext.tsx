@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User } from "@/types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const auth = useSupabaseAuth();
 
   const getUserProfile = async (session: Session) => {
@@ -60,29 +62,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Initialize auth state on component mount
   useEffect(() => {
     const checkSession = async () => {
       try {
         setIsLoading(true);
-        console.log("AuthContext - Checking session status...");
+        console.log("AuthContext - Initial session check...");
         const { data: { session } } = await auth.getSession();
         
         if (session) {
-          console.log("AuthContext - Session found, getting user profile");
+          console.log("AuthContext - Initial session found for:", session.user?.email);
           await getUserProfile(session);
         } else {
-          console.log("AuthContext - No active session found");
+          console.log("AuthContext - No initial session found");
           setUser(null);
         }
       } catch (error) {
-        console.error("AuthContext - Error checking session:", error);
+        console.error("AuthContext - Error checking initial session:", error);
         setUser(null);
       } finally {
-        console.log("AuthContext - Setting isLoading to false after session check");
+        console.log("AuthContext - Initial check complete, finishing initialization");
         setIsLoading(false);
+        setInitialized(true);
       }
     };
 
+    checkSession();
+  }, []);
+
+  // Set up auth state change listener
+  useEffect(() => {
+    if (!initialized) return;
+    
+    console.log("AuthContext - Setting up auth state change listener");
+    
     const { data: { subscription } } = auth.onAuthStateChange(
       async (event, session) => {
         console.log("AuthContext - Auth state changed:", event, session?.user?.email);
@@ -99,12 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    checkSession();
-
     return () => {
+      console.log("AuthContext - Cleaning up auth state change listener");
       subscription.unsubscribe();
     };
-  }, []);
+  }, [initialized]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -123,13 +135,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false };
       }
       
-      console.log("AuthContext - Login API call successful:", data);
+      console.log("AuthContext - Login API call successful:", !!data?.session);
       
       if (data?.session) {
-        console.log("AuthContext - Session available immediately, fetching profile");
+        console.log("AuthContext - Session available immediately after login");
         const userData = await getUserProfile(data.session);
-        console.log("AuthContext - User profile set after login:", userData);
-        return { success: true };
+        console.log("AuthContext - User profile after login:", !!userData);
+        return { success: !!userData };
       }
       
       return { success: !!data?.session };
@@ -151,15 +163,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setIsLoading(true);
-      console.log("Attempting to logout");
+      console.log("AuthContext - Attempting to logout");
       const { error } = await auth.logout();
       
       if (error) throw error;
       
-      console.log("Logout successful, clearing user");
+      console.log("AuthContext - Logout successful, clearing user");
       setUser(null);
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("AuthContext - Logout failed:", error);
       
       toast({
         title: "Erro ao sair",
@@ -171,13 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Log auth state changes
   useEffect(() => {
-    console.log("Auth Provider - State updated:", { 
+    console.log("AuthContext - State updated:", { 
       isAuthenticated: !!user, 
       isLoading, 
+      initialized,
       user: user ? `${user.email} (${user.role})` : null 
     });
-  }, [user, isLoading]);
+  }, [user, isLoading, initialized]);
 
   return (
     <AuthContext.Provider

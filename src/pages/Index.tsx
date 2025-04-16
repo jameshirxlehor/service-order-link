@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,23 +7,24 @@ import { useAuth } from "@/contexts/AuthContext";
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
   
   useEffect(() => {
-    console.log("Index page - Initial state:", { isAuthenticated, isLoading });
+    console.log("Index page - Auth state check:", { isAuthenticated, isLoading, redirectAttempted });
     
-    // If authentication check is complete
-    if (!isLoading) {
+    // Only attempt redirection once authentication check completes
+    if (!isLoading && !redirectAttempted) {
+      setRedirectAttempted(true);
+      
       if (isAuthenticated) {
-        // If user is already authenticated, redirect to dashboard immediately
-        console.log("Index page - User is authenticated, redirecting to dashboard");
+        console.log("Index page - Redirecting to dashboard");
         navigate("/dashboard", { replace: true });
       } else {
-        // Otherwise, redirect to login page immediately
-        console.log("Index page - User is not authenticated, redirecting to login now");
+        console.log("Index page - Redirecting to login");
         navigate("/login", { replace: true });
       }
     }
-  }, [navigate, isAuthenticated, isLoading]);
+  }, [navigate, isAuthenticated, isLoading, redirectAttempted]);
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
@@ -38,7 +40,7 @@ const Index = () => {
         </p>
         <div className="mt-6 text-muted-foreground text-sm">
           {isLoading ? "Verificando autenticação..." : 
-            `Redirecionando para ${isAuthenticated ? "dashboard" : "login"}...`}
+            redirectAttempted ? `Redirecionando para ${isAuthenticated ? "dashboard" : "login"}...` : ""}
         </div>
       </div>
     </div>

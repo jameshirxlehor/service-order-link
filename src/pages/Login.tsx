@@ -42,6 +42,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -56,18 +57,27 @@ export default function Login() {
 
   // Check authentication status and redirect if authenticated
   useEffect(() => {
-    console.log("Login page - Auth state check:", { isAuthenticated, authLoading });
+    console.log("Login page - Auth state check:", { 
+      isAuthenticated, 
+      authLoading, 
+      redirectAttempted,
+      from
+    });
     
-    if (isAuthenticated && !authLoading) {
-      console.log("Login page - User is authenticated, redirecting to:", from);
-      navigate(from, { replace: true });
+    if (isAuthenticated && !authLoading && !redirectAttempted) {
+      console.log("Login page - User authenticated, redirecting to:", from);
+      setRedirectAttempted(true);
+      // Use a small timeout to ensure state updates have propagated
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 100);
     }
-  }, [isAuthenticated, authLoading, navigate, from]);
+  }, [isAuthenticated, authLoading, navigate, from, redirectAttempted]);
   
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setIsSubmitting(true);
-      console.log("Login page - Submitting login form with:", data);
+      console.log("Login page - Attempting login with:", data.email);
       
       const result = await login(data.email, data.password);
       console.log("Login page - Login result:", result);
@@ -77,10 +87,8 @@ export default function Login() {
           title: "Login bem-sucedido",
           description: "Bem-vindo ao Sistema de Gestão de Ordens de Serviço",
         });
-        
-        // After a successful login, the isAuthenticated state should be updated in AuthContext
-        // which will trigger the useEffect above to handle the redirection
-        console.log("Login page - Login success, waiting for auth state update");
+        // Reset redirect flag to allow redirecting after login
+        setRedirectAttempted(false);
       } else {
         toast({
           title: "Falha no login",
