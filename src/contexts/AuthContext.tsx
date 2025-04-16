@@ -1,8 +1,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { User, UserRole, CityHall, Workshop, Admin } from "@/types";
-import { supabase } from "@/lib/supabase";
+import { User } from "@/types";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { createDefaultProfile, fetchUserProfile, fetchUserData } from "@/services/userProfileService";
 import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
@@ -18,42 +18,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const auth = useSupabaseAuth();
 
-  useEffect(() => {
-    // Check for active session
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await getUserProfile(session);
-        }
-      } catch (error) {
-        console.error("Error checking session:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Set up auth change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          await getUserProfile(session);
-        } else if (event === "SIGNED_OUT") {
-          setUser(null);
-        }
-      }
-    );
-
-    checkSession();
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // Fetch detailed user profile based on auth session
   const getUserProfile = async (session: Session) => {
     const { user: authUser } = session;
     
@@ -62,123 +28,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      // First get the user_profiles record to determine role
-      const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('auth_id', authUser.id)
-        .single();
+      const profileData = await fetchUserProfile(authUser);
       
-      if (profileError && profileError.code !== 'PGRST116') { // Not found is OK
-        throw profileError;
-      }
-      
-      // If no profile exists, create a default one
       if (!profileData) {
-        // Create a default user profile
-        const defaultProfile = {
-          auth_id: authUser.id,
-          login: authUser.email?.split('@')[0] || 'user',
-          role: UserRole.QUERY_ADMIN, // Default role
-          email: authUser.email,
-          phone: '',
-          name: authUser.email?.split('@')[0] || 'User',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        const { data: newProfile, error: insertError } = await supabase
-          .from('user_profiles')
-          .insert(defaultProfile)
-          .select()
-          .single();
-          
-        if (insertError) throw insertError;
-        
-        if (newProfile) {
-          // Create default admin user with query admin role
-          const userData: Admin = {
-            id: newProfile.id,
-            login: newProfile.login,
-            role: UserRole.QUERY_ADMIN,
-            email: authUser.email || '',
-            phone: newProfile.phone || '',
-            createdAt: new Date(newProfile.created_at),
-            updatedAt: new Date(newProfile.updated_at),
-            name: newProfile.name || 'User'
-          };
-          
-          setUser(userData);
-          setIsLoading(false);
-          
+        const newUser = await createDefaultProfile(authUser);
+        if (newUser) {
+          setUser(newUser);
           toast({
             title: "Perfil criado",
             description: "Um perfil padrão foi criado para você.",
           });
-          
-          return;
         }
+        return;
       }
       
-      let userData: User | null = null;
-      
-      // Based on role, fetch the appropriate table
-      if (profileData?.role === UserRole.CITY_HALL) {
-        const { data: cityHallData, error: cityHallError } = await supabase
-          .from('city_halls')
-          .select('*')
-          .eq('profile_id', profileData.id)
-          .single();
-          
-        if (cityHallError) throw cityHallError;
-        
-        if (cityHallData) {
-          userData = {
-            id: profileData.id,
-            login: profileData.login,
-            role: UserRole.CITY_HALL,
-            email: authUser.email || '',
-            phone: profileData.phone,
-            createdAt: new Date(profileData.created_at),
-            updatedAt: new Date(profileData.updated_at),
-            ...cityHallData
-          } as CityHall;
-        }
-      } else if (profileData?.role === UserRole.WORKSHOP) {
-        const { data: workshopData, error: workshopError } = await supabase
-          .from('workshops')
-          .select('*')
-          .eq('profile_id', profileData.id)
-          .single();
-          
-        if (workshopError) throw workshopError;
-        
-        if (workshopData) {
-          userData = {
-            id: profileData.id,
-            login: profileData.login,
-            role: UserRole.WORKSHOP,
-            email: authUser.email || '',
-            phone: profileData.phone,
-            createdAt: new Date(profileData.created_at),
-            updatedAt: new Date(profileData.updated_at),
-            ...workshopData
-          } as Workshop;
-        }
-      } else {
-        // For admin roles, we just use the profile data
-        userData = {
-          id: profileData.id,
-          login: profileData.login,
-          role: profileData.role,
-          email: authUser.email || '',
-          phone: profileData.phone,
-          createdAt: new Date(profileData.created_at),
-          updatedAt: new Date(profileData.updated_at),
-          name: profileData.name
-        } as Admin;
-      }
-      
+      const userData = await fetchUserData(profileData);
       setUser(userData);
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -192,15 +56,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await auth.getSession();
+        if (session) {
+          await getUserProfile(session);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          await getUserProfile(session);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+      }
+    );
+
+    checkSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
+      const { error } = await auth.login(email, password);
       if (error) throw error;
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -219,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await auth.logout();
       
       if (error) throw error;
       
