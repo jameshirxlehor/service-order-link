@@ -27,8 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!authUser) return;
     
     try {
-      setIsLoading(true);
-      
+      // Don't set isLoading here since it's already set in the parent function
       const profileData = await fetchUserProfile(authUser);
       
       if (!profileData) {
@@ -52,8 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Não foi possível carregar o perfil do usuário",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -62,21 +59,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         const { data: { session } } = await auth.getSession();
+        
         if (session) {
           await getUserProfile(session);
-        } else {
-          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error checking session:", error);
+      } finally {
+        // Always set loading to false when done, regardless of outcome
         setIsLoading(false);
       }
     };
 
     const { data: { subscription } } = auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event, session);
         if (event === "SIGNED_IN" && session) {
+          setIsLoading(true);
           await getUserProfile(session);
+          setIsLoading(false);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           setIsLoading(false);
@@ -92,9 +93,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setIsLoading(true);
     try {
+      console.log("Attempting login with:", email);
       const { error } = await auth.login(email, password);
       if (error) throw error;
+      
+      // Login successful - the auth state change listener will handle setting the user
+      console.log("Login successful");
     } catch (error: any) {
       console.error("Login failed:", error);
       
@@ -104,6 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         variant: "destructive"
       });
       
+      // Make sure to set loading to false when there's an error
+      setIsLoading(false);
       throw error;
     }
   };

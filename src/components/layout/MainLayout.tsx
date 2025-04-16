@@ -1,11 +1,12 @@
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { UserRole } from "@/types";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -18,7 +19,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   // Redirect to login if not authenticated
   useEffect(() => {
+    console.log("MainLayout - Auth state:", { user, isLoading });
+    
     if (!isLoading && !user) {
+      console.log("User not authenticated, redirecting to login");
       navigate("/login", { replace: true });
     }
   }, [user, isLoading, navigate]);

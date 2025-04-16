@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +40,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function Login() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -50,17 +51,24 @@ export default function Login() {
     },
   });
 
+  // Determine where to redirect after login
+  const from = location.state?.from?.pathname || "/dashboard";
+
   // Check authentication status and redirect if authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+    console.log("Login page - Auth state:", { isAuthenticated, authLoading });
+    
+    if (isAuthenticated && !authLoading) {
+      console.log("User is authenticated, redirecting to:", from);
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate, from]);
   
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     
     try {
+      console.log("Submitting login form");
       await login(data.email, data.password);
       
       toast({
@@ -71,7 +79,7 @@ export default function Login() {
       // The useEffect will handle the redirect once isAuthenticated changes
     } catch (error) {
       // Error is handled in the login function
-      console.error("Login error:", error);
+      console.error("Login form submission error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +115,7 @@ export default function Login() {
                       <Input
                         placeholder="seu@email.com"
                         type="email"
-                        disabled={isLoading}
+                        disabled={isLoading || authLoading}
                         {...field}
                       />
                     </FormControl>
@@ -125,7 +133,7 @@ export default function Login() {
                       <Input
                         placeholder="••••••••"
                         type="password"
-                        disabled={isLoading}
+                        disabled={isLoading || authLoading}
                         {...field}
                       />
                     </FormControl>
@@ -133,8 +141,8 @@ export default function Login() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+              <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
+                {isLoading || authLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...
