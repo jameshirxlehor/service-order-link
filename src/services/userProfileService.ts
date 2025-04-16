@@ -1,7 +1,6 @@
-
 import { User, UserRole, CityHall, Workshop, Admin } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { Session } from '@supabase/supabase-js';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export const createDefaultProfile = async (authUser: SupabaseUser) => {
   const defaultProfile = {
