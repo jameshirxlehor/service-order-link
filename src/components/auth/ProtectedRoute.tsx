@@ -1,6 +1,6 @@
 
-import { ReactNode, useEffect } from 'react';
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ReactNode } from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 import { Loader2 } from 'lucide-react';
@@ -13,18 +13,10 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    console.log("ProtectedRoute - Auth state:", { isAuthenticated, isLoading, location });
-    
-    if (!isLoading && !isAuthenticated) {
-      console.log("ProtectedRoute - Not authenticated, will redirect to login");
-    }
-  }, [isAuthenticated, isLoading, location]);
 
   // Show loading state while checking authentication
   if (isLoading) {
+    console.log("ProtectedRoute - Still loading auth state");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
         <div className="flex flex-col items-center gap-2">
@@ -37,7 +29,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    console.log("ProtectedRoute - Redirecting to login from:", location.pathname);
+    console.log("ProtectedRoute - Not authenticated, redirecting to login from:", location.pathname);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -47,6 +39,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log("ProtectedRoute - Auth checks passed, rendering content");
   // Render children or outlet (for nested routes)
   return children ? <>{children}</> : <Outlet />;
 };

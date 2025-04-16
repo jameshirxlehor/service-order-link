@@ -1,7 +1,7 @@
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { UserRole } from "@/types";
@@ -13,18 +13,9 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { user, isLoading, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    console.log("MainLayout - Auth state:", { user, isLoading, isAuthenticated });
-    
-    if (!isLoading && !isAuthenticated) {
-      console.log("User not authenticated, redirecting to login");
-      navigate("/login", { replace: true });
-    }
-  }, [isAuthenticated, isLoading, navigate]);
+  console.log("MainLayout - Auth state:", { user, isLoading, isAuthenticated });
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -38,9 +29,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     );
   }
 
-  // Return null while redirecting
+  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return null;
+    console.log("MainLayout - Not authenticated, redirecting to login");
+    return <Navigate to="/login" replace />;
   }
 
   let roleText = "";

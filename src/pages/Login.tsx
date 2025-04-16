@@ -38,11 +38,10 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -59,20 +58,15 @@ export default function Login() {
   useEffect(() => {
     console.log("Login page - Auth state check:", { 
       isAuthenticated, 
-      authLoading, 
-      redirectAttempted,
+      isLoading,
       from
     });
     
-    if (isAuthenticated && !authLoading && !redirectAttempted) {
-      console.log("Login page - User authenticated, redirecting to:", from);
-      setRedirectAttempted(true);
-      // Use a small timeout to ensure state updates have propagated
-      setTimeout(() => {
-        navigate(from, { replace: true });
-      }, 100);
+    if (!isLoading && isAuthenticated) {
+      console.log("Login page - Already authenticated, redirecting to:", from);
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate, from, redirectAttempted]);
+  }, [isAuthenticated, isLoading, navigate, from]);
   
   const onSubmit = async (data: LoginFormValues) => {
     try {
@@ -87,8 +81,7 @@ export default function Login() {
           title: "Login bem-sucedido",
           description: "Bem-vindo ao Sistema de Gestão de Ordens de Serviço",
         });
-        // Reset redirect flag to allow redirecting after login
-        setRedirectAttempted(false);
+        navigate(from, { replace: true });
       } else {
         toast({
           title: "Falha no login",
@@ -159,7 +152,7 @@ export default function Login() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full" disabled={isSubmitting || isLoading}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
