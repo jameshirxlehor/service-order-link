@@ -42,6 +42,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -56,34 +57,40 @@ export default function Login() {
 
   // Check authentication status and redirect if authenticated
   useEffect(() => {
-    console.log("Login page - Auth state:", { isAuthenticated, authLoading });
+    console.log("Login page - Auth state:", { isAuthenticated, authLoading, loginSuccess });
     
     if (isAuthenticated && !authLoading) {
       console.log("User is authenticated, redirecting to:", from);
-      // Force redirect with a small delay to ensure state has settled
-      setTimeout(() => {
-        navigate(from, { replace: true });
-      }, 100);
+      // Use the navigate function directly instead of setTimeout
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, authLoading, navigate, from]);
+  }, [isAuthenticated, authLoading, navigate, from, loginSuccess]);
   
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setIsSubmitting(true);
       console.log("Submitting login form with:", data);
-      await login(data.email, data.password);
       
-      // Add explicit navigation after successful login
-      console.log("Login successful, will redirect to:", from);
+      const result = await login(data.email, data.password);
+      console.log("Login result:", result);
       
       toast({
         title: "Login bem-sucedido",
         description: "Bem-vindo ao Sistema de Gestão de Ordens de Serviço",
       });
       
+      // Force a state update to trigger the useEffect for navigation
+      setLoginSuccess(true);
+      
+      // Force navigation if the effect doesn't trigger
+      setTimeout(() => {
+        console.log("Forcing navigation to:", from);
+        navigate(from, { replace: true });
+      }, 500);
+      
     } catch (error) {
-      // Error is handled in the login function
       console.error("Login form submission error:", error);
+      setLoginSuccess(false);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User } from "@/types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -9,7 +8,7 @@ import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ success: boolean }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -24,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getUserProfile = async (session: Session) => {
     const { user: authUser } = session;
     
-    if (!authUser) return;
+    if (!authUser) return null;
     
     try {
       console.log("Fetching user profile for:", authUser.email);
@@ -40,14 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             title: "Perfil criado",
             description: "Um perfil padrão foi criado para você.",
           });
+          return newUser;
         }
-        return;
+        return null;
       }
       
       console.log("Profile found, fetching full user data");
       const userData = await fetchUserData(profileData);
       console.log("User data fetched:", userData);
       setUser(userData);
+      return userData;
     } catch (error) {
       console.error("Error fetching user profile:", error);
       toast({
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Não foi possível carregar o perfil do usuário",
         variant: "destructive"
       });
+      return null;
     }
   };
 
@@ -76,20 +78,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Error checking session:", error);
         setUser(null);
       } finally {
-        // Always set loading to false when done, regardless of outcome
         console.log("Setting isLoading to false after session check");
         setIsLoading(false);
       }
     };
 
-    // Track when auth state is initialized
     let isInitialized = false;
 
     const { data: { subscription } } = auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event, session);
         
-        // Set initialized on first auth event
         if (!isInitialized) {
           isInitialized = true;
         }
@@ -106,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Only run checkSession once on mount
     checkSession();
 
     return () => {
@@ -128,18 +126,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: error.message || "Verifique suas credenciais e tente novamente",
           variant: "destructive"
         });
-        throw error;
+        return { success: false };
       }
       
-      // Don't set user here - the auth state change listener will handle it
       console.log("Login API call successful:", data);
       
-      // The auth listener should handle setting the user, but we'll check
       if (data?.session) {
         console.log("Session available immediately, fetching profile");
-        await getUserProfile(data.session);
+        const userData = await getUserProfile(data.session);
+        console.log("User profile set after login:", userData);
+        return { success: true };
       }
       
+      return { success: !!data?.session };
     } catch (error: any) {
       console.error("Login failed:", error);
       
@@ -149,9 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         variant: "destructive"
       });
       
-      throw error;
+      return { success: false };
     } finally {
-      // Always set loading to false after login attempt
       setIsLoading(false);
     }
   };
@@ -179,7 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Debug authentication state changes
   useEffect(() => {
     console.log("Auth Provider - State updated:", { 
       isAuthenticated: !!user, 

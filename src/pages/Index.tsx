@@ -8,20 +8,25 @@ const Index = () => {
   const { isAuthenticated, isLoading } = useAuth();
   
   useEffect(() => {
-    // If user is already authenticated, redirect to dashboard
-    if (isAuthenticated && !isLoading) {
-      console.log("Index page - User is authenticated, redirecting to dashboard");
-      navigate("/dashboard", { replace: true });
-      return;
+    console.log("Index page - Initial state:", { isAuthenticated, isLoading });
+    
+    // If authentication check is complete
+    if (!isLoading) {
+      if (isAuthenticated) {
+        // If user is already authenticated, redirect to dashboard immediately
+        console.log("Index page - User is authenticated, redirecting to dashboard");
+        navigate("/dashboard", { replace: true });
+      } else {
+        // Otherwise, redirect to login page after a brief moment
+        console.log("Index page - User is not authenticated, redirecting to login shortly");
+        const timer = setTimeout(() => {
+          console.log("Index page - Timeout elapsed, redirecting to login");
+          navigate("/login", { replace: true });
+        }, 1500);
+        
+        return () => clearTimeout(timer);
+      }
     }
-    
-    // Otherwise, redirect to login page after a brief moment
-    const timer = setTimeout(() => {
-      console.log("Index page - Redirecting to login");
-      navigate("/login", { replace: true });
-    }, 1500);
-    
-    return () => clearTimeout(timer);
   }, [navigate, isAuthenticated, isLoading]);
   
   return (
@@ -37,7 +42,8 @@ const Index = () => {
           Gerenciamento eficiente de ordens de serviço e orçamentos
         </p>
         <div className="mt-6 text-muted-foreground text-sm">
-          Redirecionando para {isAuthenticated ? "dashboard" : "login"}...
+          {isLoading ? "Verificando autenticação..." : 
+            `Redirecionando para ${isAuthenticated ? "dashboard" : "login"}...`}
         </div>
       </div>
     </div>
