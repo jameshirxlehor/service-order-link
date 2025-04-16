@@ -17,14 +17,9 @@ const Index = () => {
         console.log("Index page - User is authenticated, redirecting to dashboard");
         navigate("/dashboard", { replace: true });
       } else {
-        // Otherwise, redirect to login page after a brief moment
-        console.log("Index page - User is not authenticated, redirecting to login shortly");
-        const timer = setTimeout(() => {
-          console.log("Index page - Timeout elapsed, redirecting to login");
-          navigate("/login", { replace: true });
-        }, 1500);
-        
-        return () => clearTimeout(timer);
+        // Otherwise, redirect to login page immediately
+        console.log("Index page - User is not authenticated, redirecting to login now");
+        navigate("/login", { replace: true });
       }
     }
   }, [navigate, isAuthenticated, isLoading]);

@@ -26,14 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!authUser) return null;
     
     try {
-      console.log("Fetching user profile for:", authUser.email);
+      console.log("AuthContext - Fetching user profile for:", authUser.email);
       const profileData = await fetchUserProfile(authUser);
       
       if (!profileData) {
-        console.log("No profile found, creating default profile");
+        console.log("AuthContext - No profile found, creating default profile");
         const newUser = await createDefaultProfile(authUser);
         if (newUser) {
-          console.log("Default profile created successfully");
+          console.log("AuthContext - Default profile created successfully");
           setUser(newUser);
           toast({
             title: "Perfil criado",
@@ -44,13 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
       
-      console.log("Profile found, fetching full user data");
+      console.log("AuthContext - Profile found, fetching full user data");
       const userData = await fetchUserData(profileData);
-      console.log("User data fetched:", userData);
+      console.log("AuthContext - User data fetched:", userData);
       setUser(userData);
       return userData;
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.error("AuthContext - Error fetching user profile:", error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar o perfil do usuário",
@@ -64,42 +64,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkSession = async () => {
       try {
         setIsLoading(true);
-        console.log("Checking session status...");
+        console.log("AuthContext - Checking session status...");
         const { data: { session } } = await auth.getSession();
         
         if (session) {
-          console.log("Session found, getting user profile");
+          console.log("AuthContext - Session found, getting user profile");
           await getUserProfile(session);
         } else {
-          console.log("No active session found");
+          console.log("AuthContext - No active session found");
           setUser(null);
         }
       } catch (error) {
-        console.error("Error checking session:", error);
+        console.error("AuthContext - Error checking session:", error);
         setUser(null);
       } finally {
-        console.log("Setting isLoading to false after session check");
+        console.log("AuthContext - Setting isLoading to false after session check");
         setIsLoading(false);
       }
     };
 
-    let isInitialized = false;
-
     const { data: { subscription } } = auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session);
-        
-        if (!isInitialized) {
-          isInitialized = true;
-        }
+        console.log("AuthContext - Auth state changed:", event, session?.user?.email);
         
         if (event === "SIGNED_IN" && session) {
           setIsLoading(true);
-          console.log("User signed in, fetching profile");
+          console.log("AuthContext - User signed in, fetching profile");
           await getUserProfile(session);
           setIsLoading(false);
         } else if (event === "SIGNED_OUT") {
-          console.log("User signed out, clearing user state");
+          console.log("AuthContext - User signed out, clearing user state");
           setUser(null);
         }
       }
@@ -114,13 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log("Attempting login with:", email);
+      console.log("AuthContext - Attempting login with:", email);
       setIsLoading(true);
       
       const { error, data } = await auth.login(email, password);
       
       if (error) {
-        console.error("Login error:", error);
+        console.error("AuthContext - Login error:", error);
         toast({
           title: "Falha no login",
           description: error.message || "Verifique suas credenciais e tente novamente",
@@ -129,18 +123,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false };
       }
       
-      console.log("Login API call successful:", data);
+      console.log("AuthContext - Login API call successful:", data);
       
       if (data?.session) {
-        console.log("Session available immediately, fetching profile");
+        console.log("AuthContext - Session available immediately, fetching profile");
         const userData = await getUserProfile(data.session);
-        console.log("User profile set after login:", userData);
+        console.log("AuthContext - User profile set after login:", userData);
         return { success: true };
       }
       
       return { success: !!data?.session };
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("AuthContext - Login failed:", error);
       
       toast({
         title: "Falha no login",
