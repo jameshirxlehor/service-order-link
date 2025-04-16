@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,7 +61,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 
-// Mock data for service orders
 const mockServiceOrders = Array.from({ length: 10 }, (_, i) => ({
   id: `so-${i + 1}`,
   number: `SO-${1000 + i}`,
@@ -104,35 +102,34 @@ const ServiceOrders = () => {
   const isQueryAdmin = user.role === UserRole.QUERY_ADMIN;
   const isGeneralAdmin = user.role === UserRole.GENERAL_ADMIN;
 
-  // Function to get status badge styling
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "DRAFT":
         return (
           <Badge variant="outline" className="bg-muted/50">
             <Clock className="mr-1 h-3 w-3" />
-            Draft
+            Rascunho
           </Badge>
         );
       case "SENT":
         return (
           <Badge className="bg-blue-500">
             <FileText className="mr-1 h-3 w-3" />
-            Sent
+            Enviado
           </Badge>
         );
       case "QUOTED":
         return (
           <Badge className="bg-yellow-500">
             <AlertTriangle className="mr-1 h-3 w-3" />
-            Quoted
+            Orçado
           </Badge>
         );
       case "COMPLETED":
         return (
           <Badge className="bg-green-500">
             <CheckCircle className="mr-1 h-3 w-3" />
-            Completed
+            Concluído
           </Badge>
         );
       default:
@@ -140,7 +137,6 @@ const ServiceOrders = () => {
     }
   };
 
-  // Filter function
   const applyFilters = () => {
     let filtered = mockServiceOrders;
 
@@ -169,7 +165,6 @@ const ServiceOrders = () => {
     setFilteredOrders(filtered);
   };
 
-  // Handle opening the send dialog
   const handleSendDialogOpen = (orderId: string) => {
     setSelectedOrder(orderId);
     setShowSendDialog(true);
@@ -180,9 +175,9 @@ const ServiceOrders = () => {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Service Orders</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Ordens de Serviço</h1>
             <p className="text-muted-foreground">
-              Manage and track all service orders
+              Gerencie e acompanhe todas as ordens de serviço
             </p>
           </div>
           {isCityHall && (
@@ -191,7 +186,7 @@ const ServiceOrders = () => {
               onClick={() => navigate("/service-orders/new")}
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Service Order
+              Nova Ordem de Serviço
             </Button>
           )}
         </div>
@@ -203,7 +198,7 @@ const ServiceOrders = () => {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search service orders..."
+                  placeholder="Buscar ordens de serviço..."
                   className="pl-8 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -216,11 +211,11 @@ const ServiceOrders = () => {
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
-                    <SelectItem value="DRAFT">Draft</SelectItem>
-                    <SelectItem value="SENT">Sent</SelectItem>
-                    <SelectItem value="QUOTED">Quoted</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="">Todos os Status</SelectItem>
+                    <SelectItem value="DRAFT">Rascunho</SelectItem>
+                    <SelectItem value="SENT">Enviado</SelectItem>
+                    <SelectItem value="QUOTED">Orçado</SelectItem>
+                    <SelectItem value="COMPLETED">Concluído</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -230,13 +225,13 @@ const ServiceOrders = () => {
                     onValueChange={setCityHallFilter}
                   >
                     <SelectTrigger className="w-full sm:w-[180px]">
-                      <SelectValue placeholder="City Hall" />
+                      <SelectValue placeholder="Prefeitura" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All City Halls</SelectItem>
-                      <SelectItem value="City Hall 1">City Hall 1</SelectItem>
-                      <SelectItem value="City Hall 2">City Hall 2</SelectItem>
-                      <SelectItem value="City Hall 3">City Hall 3</SelectItem>
+                      <SelectItem value="">Todas as Prefeituras</SelectItem>
+                      <SelectItem value="City Hall 1">Prefeitura 1</SelectItem>
+                      <SelectItem value="City Hall 2">Prefeitura 2</SelectItem>
+                      <SelectItem value="City Hall 3">Prefeitura 3</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -247,7 +242,7 @@ const ServiceOrders = () => {
                   onClick={applyFilters}
                 >
                   <Filter className="h-4 w-4" />
-                  Filter
+                  Filtrar
                 </Button>
               </div>
             </div>
@@ -257,16 +252,16 @@ const ServiceOrders = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Service Order</TableHead>
+                    <TableHead>Ordem de Serviço</TableHead>
                     {(isQueryAdmin || isGeneralAdmin) && (
-                      <TableHead>City Hall</TableHead>
+                      <TableHead>Prefeitura</TableHead>
                     )}
-                    <TableHead>Vehicle</TableHead>
-                    <TableHead>Service Type</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Veículo</TableHead>
+                    <TableHead>Tipo de Serviço</TableHead>
+                    <TableHead>Data</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Quotes</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Orçamentos</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -294,7 +289,13 @@ const ServiceOrders = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>{order.serviceType}</TableCell>
+                      <TableCell>
+                        {order.serviceType === "PREVENTIVE"
+                          ? "Preventiva"
+                          : order.serviceType === "CORRECTIVE"
+                          ? "Corretiva"
+                          : "Emergência"}
+                      </TableCell>
                       <TableCell>
                         {order.createdAt.toLocaleDateString()}
                       </TableCell>
@@ -302,11 +303,11 @@ const ServiceOrders = () => {
                       <TableCell>
                         {order.quotes > 0 ? (
                           <Badge variant="outline" className="bg-secondary/50">
-                            {order.quotes} Quote{order.quotes !== 1 && "s"}
+                            {order.quotes} Orçamento{order.quotes !== 1 && "s"}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">
-                            None
+                            Nenhum
                           </span>
                         )}
                       </TableCell>
@@ -315,7 +316,7 @@ const ServiceOrders = () => {
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
+                              <span className="sr-only">Ações</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -324,7 +325,7 @@ const ServiceOrders = () => {
                                 navigate(`/service-orders/${order.id}`)
                               }
                             >
-                              View Details
+                              Ver Detalhes
                             </DropdownMenuItem>
                             
                             {isCityHall && order.status === "DRAFT" && (
@@ -334,12 +335,12 @@ const ServiceOrders = () => {
                                     navigate(`/service-orders/${order.id}/edit`)
                                   }
                                 >
-                                  Edit
+                                  Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleSendDialogOpen(order.id)}
                                 >
-                                  Send to Workshops
+                                  Enviar para Oficinas
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -350,7 +351,7 @@ const ServiceOrders = () => {
                                   navigate(`/service-orders/${order.id}/quotes`)
                                 }
                               >
-                                View Quotes
+                                Ver Orçamentos
                               </DropdownMenuItem>
                             )}
                             
@@ -358,7 +359,7 @@ const ServiceOrders = () => {
                             
                             <DropdownMenuItem>
                               <Download className="mr-2 h-4 w-4" />
-                              Export PDF
+                              Exportar PDF
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -372,14 +373,13 @@ const ServiceOrders = () => {
         </Card>
       </div>
 
-      {/* Dialog for sending service order to workshops */}
       <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Send Service Order to Workshops</DialogTitle>
+            <DialogTitle>Enviar Ordem de Serviço para Oficinas</DialogTitle>
             <DialogDescription>
-              Select which accredited workshops should receive this service order
-              for quotation.
+              Selecione quais oficinas credenciadas devem receber esta ordem de serviço
+              para orçamento.
             </DialogDescription>
           </DialogHeader>
           
@@ -392,12 +392,12 @@ const ServiceOrders = () => {
                     htmlFor={`workshop-${i}`}
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Workshop {i}
+                    Oficina {i}
                   </label>
                   <p className="text-sm text-muted-foreground">
                     {i % 2 === 0
-                      ? "Mechanical Services Specialist"
-                      : "Auto Body and Paint Shop"}
+                      ? "Especialista em Serviços Mecânicos"
+                      : "Funilaria e Pintura"}
                   </p>
                 </div>
               </div>
@@ -406,10 +406,10 @@ const ServiceOrders = () => {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSendDialog(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button onClick={() => setShowSendDialog(false)}>
-              Send Order
+              Enviar Ordem
             </Button>
           </DialogFooter>
         </DialogContent>
