@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const auth = useSupabaseAuth();
 
   const getUserProfile = async (session: Session) => {
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("AuthContext - Initial check complete, finishing initialization");
         setIsLoading(false);
         setInitialized(true);
+        setSessionChecked(true);
       }
     };
 
@@ -98,8 +100,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     window.addEventListener('storage', handleStorageChange);
+    
+    // Add beforeunload event to persist session data
+    const handleBeforeUnload = () => {
+      // This helps with session persistence across page reloads
+      localStorage.setItem('lastAuthState', JSON.stringify({
+        isAuthenticated: !!user,
+        userId: user?.id,
+        timestamp: new Date().getTime()
+      }));
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
@@ -126,15 +142,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(true);
           await getUserProfile(session);
           setIsLoading(false);
+        } else if (event === "USER_UPDATED" && session) {
+          console.log("AuthContext - User updated, refreshing profile");
+          setIsLoading(true);
+          await getUserProfile(session);
+          setIsLoading(false);
         }
       }
     );
+
+    // Check if we need to recover from a page reload
+    const checkForReload = async () => {
+      if (sessionChecked && !user) {
+        const lastAuthState = localStorage.getItem('lastAuthState');
+        if (lastAuthState) {
+          try {
+            const parsed = JSON.parse(lastAuthState);
+            const timeDiff = new Date().getTime() - parsed.timestamp;
+            // If last auth state is less than 30 seconds old, consider it still valid
+            if (parsed.isAuthenticated && timeDiff < 30000) {
+              console.log("AuthContext - Recovering from page reload, checking session");
+              const { data: { session } } = await auth.getSession();
+              if (session) {
+                await getUserProfile(session);
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing lastAuthState", e);
+          }
+        }
+      }
+    };
+    
+    checkForReload();
 
     return () => {
       console.log("AuthContext - Cleaning up auth state change listener");
       subscription.unsubscribe();
     };
-  }, [initialized]);
+  }, [initialized, sessionChecked, user]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -182,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       console.log("AuthContext - Attempting to logout");
+      localStorage.removeItem('lastAuthState');
       const { error } = await auth.logout();
       
       if (error) throw error;
@@ -207,9 +254,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user, 
       isLoading, 
       initialized,
+      sessionChecked,
       user: user ? `${user.email} (${user.role})` : null 
     });
-  }, [user, isLoading, initialized]);
+  }, [user, isLoading, initialized, sessionChecked]);
 
   return (
     <AuthContext.Provider

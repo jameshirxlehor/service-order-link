@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Building2, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { checkSupabaseConnection } from "@/lib/supabase";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -13,7 +14,18 @@ const Index = () => {
     console.log("Index page - Auth state:", { isAuthenticated, isLoading });
     
     const checkConnection = async () => {
-      await checkSupabaseConnection();
+      try {
+        const isConnected = await checkSupabaseConnection();
+        if (!isConnected) {
+          toast({
+            title: "Erro de conexão",
+            description: "Não foi possível conectar ao banco de dados. Verifique sua conexão.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Index page - Connection check error:", error);
+      }
     };
     
     checkConnection();

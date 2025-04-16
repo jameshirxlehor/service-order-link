@@ -1,9 +1,10 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children?: ReactNode;
@@ -13,6 +14,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     console.log("ProtectedRoute - Auth state:", { 
@@ -21,7 +23,21 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
       user: user ? `${user.email} (${user.role})` : null,
       path: location.pathname
     });
+
+    // Reset error state on location change
+    setError(null);
   }, [isAuthenticated, isLoading, user, location.pathname]);
+
+  // Error handler
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error("ProtectedRoute - Caught runtime error:", event.error);
+      setError(event.error);
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -30,6 +46,22 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <div className="text-lg text-muted-foreground">Carregando...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
+        <div className="flex flex-col items-center text-center max-w-md p-6">
+          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+          <h2 className="text-xl font-bold mb-2">Algo deu errado</h2>
+          <p className="text-muted-foreground mb-4">Ocorreu um erro inesperado. Por favor, tente recarregar a página.</p>
+          <Button onClick={() => window.location.reload()}>
+            Recarregar Página
+          </Button>
         </div>
       </div>
     );

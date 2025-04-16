@@ -1,6 +1,6 @@
 
 import { useState, Dispatch, SetStateAction } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types";
@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { toast } from "@/hooks/use-toast";
 
 interface SidebarProps {
   open: boolean;
@@ -37,9 +38,10 @@ interface NavItemProps {
   title: string;
   active?: boolean;
   collapsed?: boolean;
+  onClick?: () => void;
 }
 
-const NavItem = ({ href, icon: Icon, title, active, collapsed }: NavItemProps) => {
+const NavItem = ({ href, icon: Icon, title, active, collapsed, onClick }: NavItemProps) => {
   return (
     <li>
       <TooltipProvider delayDuration={0}>
@@ -53,6 +55,7 @@ const NavItem = ({ href, icon: Icon, title, active, collapsed }: NavItemProps) =
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-primary/10 text-foreground"
               )}
+              onClick={onClick}
             >
               <Icon className="h-5 w-5 shrink-0" />
               {!collapsed && <span>{title}</span>}
@@ -68,6 +71,7 @@ const NavItem = ({ href, icon: Icon, title, active, collapsed }: NavItemProps) =
 const Sidebar = ({ open, setOpen }: SidebarProps) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
   if (!user) return null;
@@ -76,6 +80,27 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   const isWorkshop = user.role === UserRole.WORKSHOP;
   const isQueryAdmin = user.role === UserRole.QUERY_ADMIN;
   const isGeneralAdmin = user.role === UserRole.GENERAL_ADMIN;
+
+  const handleNavigation = (href: string, implemented: boolean = true) => {
+    if (implemented) {
+      navigate(href);
+      setOpen(false); // Close sidebar on mobile after navigation
+    } else {
+      toast({
+        title: "Funcionalidade em desenvolvimento",
+        description: "Esta página será implementada em breve.",
+      });
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
     <aside
@@ -109,6 +134,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
               title="Dashboard"
               active={location.pathname === "/dashboard"}
               collapsed={collapsed}
+              onClick={() => handleNavigation("/dashboard")}
             />
 
             {/* City Hall specific navigation */}
@@ -117,16 +143,18 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                 <NavItem
                   href="/service-orders"
                   icon={FileText}
-                  title="Service Orders"
+                  title="Ordens de Serviço"
                   active={location.pathname.startsWith("/service-orders")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/service-orders")}
                 />
                 <NavItem
                   href="/quotes"
                   icon={Calculator}
-                  title="Quotes"
+                  title="Cotações"
                   active={location.pathname.startsWith("/quotes")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/quotes", false)}
                 />
               </>
             )}
@@ -137,16 +165,18 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                 <NavItem
                   href="/service-orders"
                   icon={ClipboardList}
-                  title="Service Orders"
+                  title="Ordens de Serviço"
                   active={location.pathname.startsWith("/service-orders")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/service-orders")}
                 />
                 <NavItem
                   href="/my-quotes"
                   icon={Calculator}
-                  title="My Quotes"
+                  title="Minhas Cotações"
                   active={location.pathname.startsWith("/my-quotes")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/my-quotes", false)}
                 />
               </>
             )}
@@ -157,23 +187,26 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                 <NavItem
                   href="/service-orders"
                   icon={FileText}
-                  title="Service Orders"
+                  title="Ordens de Serviço"
                   active={location.pathname.startsWith("/service-orders")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/service-orders")}
                 />
                 <NavItem
                   href="/quotes"
                   icon={Calculator}
-                  title="Quotes"
+                  title="Cotações"
                   active={location.pathname.startsWith("/quotes")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/quotes", false)}
                 />
                 <NavItem
                   href="/reports"
                   icon={BarChart2}
-                  title="Reports"
+                  title="Relatórios"
                   active={location.pathname.startsWith("/reports")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/reports", false)}
                 />
               </>
             )}
@@ -184,44 +217,50 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                 <NavItem
                   href="/service-orders"
                   icon={FileText}
-                  title="Service Orders"
+                  title="Ordens de Serviço"
                   active={location.pathname.startsWith("/service-orders")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/service-orders")}
                 />
                 <NavItem
                   href="/quotes"
                   icon={Calculator}
-                  title="Quotes"
+                  title="Cotações"
                   active={location.pathname.startsWith("/quotes")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/quotes", false)}
                 />
                 <NavItem
                   href="/city-halls"
                   icon={Building}
-                  title="City Halls"
+                  title="Prefeituras"
                   active={location.pathname.startsWith("/city-halls")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/city-halls", false)}
                 />
                 <NavItem
                   href="/workshops"
                   icon={Wrench}
-                  title="Workshops"
+                  title="Oficinas"
                   active={location.pathname.startsWith("/workshops")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/workshops", false)}
                 />
                 <NavItem
-                  href="/users"
+                  href="/admin/users"
                   icon={Users}
-                  title="Users"
-                  active={location.pathname.startsWith("/users")}
+                  title="Usuários"
+                  active={location.pathname.startsWith("/admin/users")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/admin/users")}
                 />
                 <NavItem
                   href="/reports"
                   icon={BarChart2}
-                  title="Reports"
+                  title="Relatórios"
                   active={location.pathname.startsWith("/reports")}
                   collapsed={collapsed}
+                  onClick={() => handleNavigation("/reports", false)}
                 />
               </>
             )}
@@ -236,7 +275,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             "w-full justify-start gap-2",
             collapsed && "justify-center"
           )}
-          onClick={logout}
+          onClick={handleLogout}
         >
           <LogOut className="h-5 w-5" />
           {!collapsed && <span>Logout</span>}

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
-import { supabase } from "@/lib/supabase";
+import { supabase, safeQuery } from "@/lib/supabase";
 import { UserRole } from "@/types";
 import {
   Users,
@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Plus,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -47,13 +49,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const navigate = useNavigate();
   
-  // Query to fetch all users
-  const { data: users, isLoading } = useQuery({
+  // Query to fetch all users with error handling
+  const { data: users, isLoading, error, refetch } = useQuery({
     queryKey: ['users', roleFilter],
     queryFn: async () => {
       let query = supabase
@@ -64,26 +70,30 @@ const AdminUsers = () => {
         query = query.eq('role', roleFilter);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await safeQuery(() => 
+        query.order('created_at', { ascending: false })
+      );
         
       if (error) throw error;
       return data || [];
-    }
+    },
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
   
   // Function to filter users based on search term
-  const filteredUsers = users?.filter(user => {
+  const filteredUsers = (users || []).filter(user => {
     if (!searchTerm) return true;
     
     const searchLower = searchTerm.toLowerCase();
     
     return (
-      user.name?.toLowerCase().includes(searchLower) ||
-      user.email?.toLowerCase().includes(searchLower) ||
-      user.login?.toLowerCase().includes(searchLower) ||
-      user.phone?.toLowerCase().includes(searchLower)
+      (user.name || '').toLowerCase().includes(searchLower) ||
+      (user.email || '').toLowerCase().includes(searchLower) ||
+      (user.login || '').toLowerCase().includes(searchLower) ||
+      (user.phone || '').toLowerCase().includes(searchLower)
     );
-  }) || [];
+  });
   
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -119,6 +129,14 @@ const AdminUsers = () => {
         return <Badge>{role}</Badge>;
     }
   };
+
+  const handleCreateUser = () => {
+    toast({
+      title: "Funcionalidade em desenvolvimento",
+      description: "A criação de usuários será implementada em breve.",
+    });
+    // For the future: navigate("/admin/users/new");
+  };
   
   return (
     <MainLayout>
@@ -130,7 +148,10 @@ const AdminUsers = () => {
               Gerenciar usuários do sistema
             </p>
           </div>
-          <Button className="sm:w-auto w-full">
+          <Button 
+            className="sm:w-auto w-full"
+            onClick={handleCreateUser}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Novo Usuário
           </Button>
@@ -166,7 +187,7 @@ const AdminUsers = () => {
                 <Button
                   variant="secondary"
                   className="gap-2"
-                  onClick={() => {}} // No-op for now, as search is immediate
+                  onClick={() => refetch()}
                 >
                   <Filter className="h-4 w-4" />
                   Filtrar
@@ -180,6 +201,21 @@ const AdminUsers = () => {
                 <div className="flex justify-center items-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-2 text-muted-foreground">Carregando...</span>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                  <h3 className="text-lg font-semibold">Erro ao carregar usuários</h3>
+                  <p className="text-muted-foreground max-w-md mt-2">
+                    Ocorreu um erro ao buscar os dados. Verifique sua conexão e tente novamente.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => refetch()}
+                  >
+                    Tentar novamente
+                  </Button>
                 </div>
               ) : (
                 <Table>
@@ -195,22 +231,26 @@ const AdminUsers = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.length === 0 ? (
+                    {!users || filteredUsers.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          Nenhum usuário encontrado
+                          {users && users.length > 0 
+                            ? "Nenhum usuário encontrado com os filtros atuais" 
+                            : "Nenhum usuário cadastrado"}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredUsers.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.login}</TableCell>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.phone}</TableCell>
-                          <TableCell>{getRoleBadge(user.role)}</TableCell>
+                          <TableCell className="font-medium">{user.login || "—"}</TableCell>
+                          <TableCell>{user.name || "—"}</TableCell>
+                          <TableCell>{user.email || "—"}</TableCell>
+                          <TableCell>{user.phone || "—"}</TableCell>
+                          <TableCell>{user.role ? getRoleBadge(user.role) : "—"}</TableCell>
                           <TableCell>
-                            {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                            {user.created_at 
+                              ? new Date(user.created_at).toLocaleDateString('pt-BR')
+                              : "—"}
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
@@ -221,14 +261,32 @@ const AdminUsers = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  toast({
+                                    title: "Funcionalidade em desenvolvimento",
+                                    description: "A visualização de detalhes será implementada em breve.",
+                                  });
+                                }}>
                                   Ver Detalhes
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  toast({
+                                    title: "Funcionalidade em desenvolvimento",
+                                    description: "A edição de usuários será implementada em breve.",
+                                  });
+                                }}>
                                   Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Funcionalidade em desenvolvimento",
+                                      description: "A exclusão de usuários será implementada em breve.",
+                                    });
+                                  }}
+                                >
                                   Excluir
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
