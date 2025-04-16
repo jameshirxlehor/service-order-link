@@ -1,9 +1,12 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Building2, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import {
   Card,
   CardContent,
@@ -12,6 +15,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -20,143 +25,127 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Building2, Key } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+const loginSchema = z.object({
+  email: z
+    .string()
+    .email("Digite um e-mail válido")
+    .min(1, "E-mail é obrigatório"),
+  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
 });
 
-const Login = () => {
-  const { login } = useAuth();
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+export default function Login() {
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  // Redirect if already logged in
+  if (isAuthenticated) {
+    navigate("/dashboard");
+    return null;
+  }
+
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     
     try {
-      await login(values.email, values.password);
+      await login(data.email, data.password);
+      
+      toast({
+        title: "Login bem-sucedido",
+        description: "Bem-vindo ao Sistema de Gestão de Ordens de Serviço",
+      });
+      
       navigate("/dashboard");
-      toast({
-        title: "Login successful",
-        description: "Welcome to the Service Order Management System",
-      });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Login failed",
-        description: "Please check your credentials and try again",
-      });
+      // Error is handled in the login function
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
-      <div className="w-full max-w-md p-4">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Building2 className="h-16 w-16 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20 p-4">
+      <Card className="w-full max-w-md shadow-lg animate-fade-in">
+        <CardHeader className="space-y-4 text-center">
+          <div className="flex justify-center">
+            <Building2 className="h-12 w-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-primary">
-            Service Order Management
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Login to access your dashboard
-          </p>
-        </div>
-
-        <Card className="w-full shadow-lg border-primary/10 animate-enter">
-          <CardHeader>
-            <CardTitle>Account Login</CardTitle>
-            <CardDescription>
-              Enter your email and password to sign in
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter your email"
-                          disabled={isLoading}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Enter your password"
-                          disabled={isLoading}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Logging in..." : "Login"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-          <CardFooter className="flex justify-center border-t py-4">
-            <div className="text-xs text-muted-foreground text-center">
-              <div className="mb-2 flex items-center justify-center gap-1">
-                <Key className="h-3 w-3" />
-                <span>Secure login</span>
-              </div>
-              <p>Use the test accounts listed below for demo purposes:</p>
-              <p>cityhall@example.com</p>
-              <p>workshop@example.com</p>
-              <p>queryadmin@example.com</p>
-              <p>generaladmin@example.com</p>
-              <p>(All with password: password123)</p>
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
+          <CardTitle className="text-3xl font-bold">Entrar</CardTitle>
+          <CardDescription>
+            Acesse o Sistema de Gestão de Ordens de Serviço
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-mail</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="seu@email.com"
+                        type="email"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="••••••••"
+                        type="password"
+                        disabled={isLoading}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="text-sm text-center text-muted-foreground">
+            Este sistema é protegido. Acesso apenas para usuários autorizados.
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   );
-};
-
-export default Login;
+}

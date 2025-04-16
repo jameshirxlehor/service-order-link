@@ -1,7 +1,10 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/types";
+import { UserRole, ServiceOrderStatus, ServiceType } from "@/types";
+import { supabase } from "@/lib/supabase";
 import {
   FileText,
   Plus,
@@ -16,6 +19,7 @@ import {
   Wrench,
   Calendar,
   Car,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +34,7 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -56,44 +58,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
-const mockServiceOrders = Array.from({ length: 10 }, (_, i) => ({
-  id: `so-${i + 1}`,
-  number: `SO-${1000 + i}`,
-  cityHall: `City Hall ${i % 3 + 1}`,
-  vehicle: {
-    type: i % 2 === 0 ? "Car" : "Truck",
-    brand: i % 3 === 0 ? "Toyota" : i % 3 === 1 ? "Ford" : "Chevrolet",
-    model: i % 3 === 0 ? "Corolla" : i % 3 === 1 ? "Ranger" : "S10",
-    year: `20${20 + i % 4}`,
-    licensePlate: `ABC-${1000 + i}`,
-  },
-  serviceType: i % 3 === 0 ? "Preventive" : i % 3 === 1 ? "Corrective" : "Emergency",
-  createdAt: new Date(2023, i % 12, i + 1),
-  status:
-    i % 4 === 0
-      ? "DRAFT"
-      : i % 4 === 1
-      ? "SENT"
-      : i % 4 === 2
-      ? "QUOTED"
-      : "COMPLETED",
-  quotes: i % 4 === 0 ? 0 : i % 4 === 1 ? 2 : i % 4 === 2 ? 4 : 3,
-}));
+// Helper function to format a date
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('pt-BR');
+};
+
+// Service type mapping
+const serviceTypeLabels: Record<string, string> = {
+  PREVENTIVE: "Preventiva",
+  CORRECTIVE: "Corretiva",
+  EMERGENCY: "Emergência"
+};
 
 const ServiceOrders = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [cityHallFilter, setCityHallFilter] = useState("");
-  const [filteredOrders, setFilteredOrders] = useState(mockServiceOrders);
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [selectedWorkshops, setSelectedWorkshops] = useState<string[]>([]);
 
   if (!user) return null;
 
@@ -102,30 +94,174 @@ const ServiceOrders = () => {
   const isQueryAdmin = user.role === UserRole.QUERY_ADMIN;
   const isGeneralAdmin = user.role === UserRole.GENERAL_ADMIN;
 
+  // Query to get all city halls for filter dropdown
+  const { data: cityHalls, isLoading: cityHallsLoading } = useQuery({
+    queryKey: ['city-halls'],
+    queryFn: async () => {
+      if (!isQueryAdmin && !isGeneralAdmin) return [];
+      
+      const { data, error } = await supabase
+        .from('city_halls')
+        .select('id, tradeName')
+        .order('tradeName');
+        
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isQueryAdmin || isGeneralAdmin
+  });
+
+  // Query to get all accredited workshops for a city hall
+  const { data: accreditedWorkshops, isLoading: workshopsLoading } = useQuery({
+    queryKey: ['accredited-workshops', user.id],
+    queryFn: async () => {
+      if (!isCityHall || !selectedOrder) return [];
+      
+      const { data, error } = await supabase
+        .from('workshops')
+        .select('id, tradeName')
+        .filter('accreditedCityHalls', 'cs', `{${user.id}}`)
+        .order('tradeName');
+        
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isCityHall && !!selectedOrder
+  });
+
+  // Main query to get service orders based on role
+  const { data: serviceOrders, isLoading: ordersLoading } = useQuery({
+    queryKey: ['service-orders', user.role, user.id, statusFilter, cityHallFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from('service_orders')
+        .select(`
+          *,
+          city_halls:cityHallId(tradeName),
+          quotes(id)
+        `);
+      
+      // Filter by role
+      if (isCityHall) {
+        query = query.eq('cityHallId', user.id);
+      } else if (isWorkshop) {
+        // For workshops, we need to show service orders that were sent to this workshop
+        query = query.filter('sentToWorkshops', 'cs', `{${user.id}}`);
+      }
+      
+      // Apply status filter if selected
+      if (statusFilter) {
+        query = query.eq('status', statusFilter);
+      }
+      
+      // Apply city hall filter if selected
+      if (cityHallFilter && (isQueryAdmin || isGeneralAdmin)) {
+        query = query.eq('cityHallId', cityHallFilter);
+      }
+      
+      // Order by creation date, newest first
+      query = query.order('createdAt', { ascending: false });
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      return data || [];
+    }
+  });
+
+  // Mutation to send service order to workshops
+  const sendOrderMutation = useMutation({
+    mutationFn: async ({ orderId, workshopIds }: { orderId: string, workshopIds: string[] }) => {
+      // First update the service order status
+      const { error: updateError } = await supabase
+        .from('service_orders')
+        .update({ 
+          status: ServiceOrderStatus.SENT,
+          sentToWorkshops: workshopIds,
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', orderId);
+        
+      if (updateError) throw updateError;
+      
+      // Add to history
+      const { error: historyError } = await supabase
+        .from('service_order_history')
+        .insert({
+          serviceOrderId: orderId,
+          action: 'SENT_TO_WORKSHOPS',
+          userId: user.id,
+          userRole: user.role,
+          details: `Enviado para ${workshopIds.length} oficina(s)`,
+          timestamp: new Date().toISOString()
+        });
+        
+      if (historyError) throw historyError;
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      
+      toast({
+        title: "Ordem de serviço enviada",
+        description: "A ordem de serviço foi enviada para as oficinas selecionadas",
+      });
+      
+      setShowSendDialog(false);
+      setSelectedOrder(null);
+      setSelectedWorkshops([]);
+    },
+    onError: (error) => {
+      console.error("Error sending service order:", error);
+      
+      toast({
+        title: "Erro ao enviar",
+        description: "Não foi possível enviar a ordem de serviço. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Function to filter service orders based on search term
+  const filteredOrders = serviceOrders?.filter(order => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    
+    return (
+      order.number.toLowerCase().includes(searchLower) ||
+      order.vehicle?.brand?.toLowerCase().includes(searchLower) ||
+      order.vehicle?.model?.toLowerCase().includes(searchLower) ||
+      order.vehicle?.licensePlate?.toLowerCase().includes(searchLower)
+    );
+  }) || [];
+
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "DRAFT":
+      case ServiceOrderStatus.DRAFT:
         return (
           <Badge variant="outline" className="bg-muted/50">
             <Clock className="mr-1 h-3 w-3" />
             Rascunho
           </Badge>
         );
-      case "SENT":
+      case ServiceOrderStatus.SENT:
         return (
           <Badge className="bg-blue-500">
             <FileText className="mr-1 h-3 w-3" />
             Enviado
           </Badge>
         );
-      case "QUOTED":
+      case ServiceOrderStatus.QUOTED:
         return (
           <Badge className="bg-yellow-500">
             <AlertTriangle className="mr-1 h-3 w-3" />
             Orçado
           </Badge>
         );
-      case "COMPLETED":
+      case ServiceOrderStatus.COMPLETED:
         return (
           <Badge className="bg-green-500">
             <CheckCircle className="mr-1 h-3 w-3" />
@@ -137,38 +273,43 @@ const ServiceOrders = () => {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = mockServiceOrders;
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (order) =>
-          order.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.vehicle.licensePlate
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter) {
-      filtered = filtered.filter((order) => order.status === statusFilter);
-    }
-
-    if (cityHallFilter) {
-      filtered = filtered.filter(
-        (order) => order.cityHall === cityHallFilter
-      );
-    }
-
-    setFilteredOrders(filtered);
-  };
-
   const handleSendDialogOpen = (orderId: string) => {
     setSelectedOrder(orderId);
+    setSelectedWorkshops([]);
     setShowSendDialog(true);
   };
+
+  const handleSendOrder = () => {
+    if (!selectedOrder || selectedWorkshops.length === 0) {
+      toast({
+        title: "Selecione oficinas",
+        description: "Por favor, selecione pelo menos uma oficina para enviar a ordem de serviço",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    sendOrderMutation.mutate({ 
+      orderId: selectedOrder,
+      workshopIds: selectedWorkshops
+    });
+  };
+
+  const toggleWorkshopSelection = (workshopId: string) => {
+    setSelectedWorkshops(prev => 
+      prev.includes(workshopId)
+        ? prev.filter(id => id !== workshopId)
+        : [...prev, workshopId]
+    );
+  };
+
+  const applyFilters = () => {
+    // No need to manually filter - the useQuery will handle this
+    // Just make sure we refetch when filters change
+    queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+  };
+
+  const isLoading = ordersLoading || cityHallsLoading || workshopsLoading;
 
   return (
     <MainLayout>
@@ -202,7 +343,6 @@ const ServiceOrders = () => {
                   className="pl-8 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && applyFilters()}
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
@@ -212,14 +352,14 @@ const ServiceOrders = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Todos os Status</SelectItem>
-                    <SelectItem value="DRAFT">Rascunho</SelectItem>
-                    <SelectItem value="SENT">Enviado</SelectItem>
-                    <SelectItem value="QUOTED">Orçado</SelectItem>
-                    <SelectItem value="COMPLETED">Concluído</SelectItem>
+                    <SelectItem value={ServiceOrderStatus.DRAFT}>Rascunho</SelectItem>
+                    <SelectItem value={ServiceOrderStatus.SENT}>Enviado</SelectItem>
+                    <SelectItem value={ServiceOrderStatus.QUOTED}>Orçado</SelectItem>
+                    <SelectItem value={ServiceOrderStatus.COMPLETED}>Concluído</SelectItem>
                   </SelectContent>
                 </Select>
 
-                {(isQueryAdmin || isGeneralAdmin) && (
+                {(isQueryAdmin || isGeneralAdmin) && cityHalls && (
                   <Select
                     value={cityHallFilter}
                     onValueChange={setCityHallFilter}
@@ -229,9 +369,11 @@ const ServiceOrders = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Todas as Prefeituras</SelectItem>
-                      <SelectItem value="City Hall 1">Prefeitura 1</SelectItem>
-                      <SelectItem value="City Hall 2">Prefeitura 2</SelectItem>
-                      <SelectItem value="City Hall 3">Prefeitura 3</SelectItem>
+                      {cityHalls.map((cityHall) => (
+                        <SelectItem key={cityHall.id} value={cityHall.id}>
+                          {cityHall.tradeName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -249,125 +391,136 @@ const ServiceOrders = () => {
           </CardHeader>
           <CardContent className="p-0">
             <div className="border-t">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ordem de Serviço</TableHead>
-                    {(isQueryAdmin || isGeneralAdmin) && (
-                      <TableHead>Prefeitura</TableHead>
-                    )}
-                    <TableHead>Veículo</TableHead>
-                    <TableHead>Tipo de Serviço</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Orçamentos</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.number}</TableCell>
+              {isLoading ? (
+                <div className="flex justify-center items-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Carregando...</span>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ordem de Serviço</TableHead>
                       {(isQueryAdmin || isGeneralAdmin) && (
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-muted-foreground" />
-                            <span>{order.cityHall}</span>
-                          </div>
-                        </TableCell>
+                        <TableHead>Prefeitura</TableHead>
                       )}
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <Car className="h-4 w-4 text-muted-foreground" />
-                            <span>
-                              {order.vehicle.brand} {order.vehicle.model}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {order.vehicle.licensePlate} · {order.vehicle.year}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {order.serviceType === "PREVENTIVE"
-                          ? "Preventiva"
-                          : order.serviceType === "CORRECTIVE"
-                          ? "Corretiva"
-                          : "Emergência"}
-                      </TableCell>
-                      <TableCell>
-                        {order.createdAt.toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(order.status)}</TableCell>
-                      <TableCell>
-                        {order.quotes > 0 ? (
-                          <Badge variant="outline" className="bg-secondary/50">
-                            {order.quotes} Orçamento{order.quotes !== 1 && "s"}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">
-                            Nenhum
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Ações</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(`/service-orders/${order.id}`)
-                              }
-                            >
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            
-                            {isCityHall && order.status === "DRAFT" && (
-                              <>
+                      <TableHead>Veículo</TableHead>
+                      <TableHead>Tipo de Serviço</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Orçamentos</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredOrders.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={(isQueryAdmin || isGeneralAdmin) ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                          Nenhuma ordem de serviço encontrada
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-medium">{order.number}</TableCell>
+                          {(isQueryAdmin || isGeneralAdmin) && (
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Building className="h-4 w-4 text-muted-foreground" />
+                                <span>{order.city_halls?.tradeName}</span>
+                              </div>
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <Car className="h-4 w-4 text-muted-foreground" />
+                                <span>
+                                  {order.vehicle?.brand} {order.vehicle?.model}
+                                </span>
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {order.vehicle?.licensePlate} · {order.vehicle?.year}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {serviceTypeLabels[order.serviceInfo?.type] || order.serviceInfo?.type}
+                          </TableCell>
+                          <TableCell>
+                            {formatDate(order.createdAt)}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(order.status)}</TableCell>
+                          <TableCell>
+                            {order.quotes?.length > 0 ? (
+                              <Badge variant="outline" className="bg-secondary/50">
+                                {order.quotes.length} Orçamento{order.quotes.length !== 1 && "s"}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                Nenhum
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Ações</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    navigate(`/service-orders/${order.id}/edit`)
+                                    navigate(`/service-orders/${order.id}`)
                                   }
                                 >
-                                  Editar
+                                  Ver Detalhes
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleSendDialogOpen(order.id)}
-                                >
-                                  Enviar para Oficinas
+                                
+                                {isCityHall && order.status === ServiceOrderStatus.DRAFT && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        navigate(`/service-orders/${order.id}/edit`)
+                                      }
+                                    >
+                                      Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleSendDialogOpen(order.id)}
+                                    >
+                                      Enviar para Oficinas
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                
+                                {(isCityHall || isGeneralAdmin) && order.quotes?.length > 0 && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(`/service-orders/${order.id}/quotes`)
+                                    }
+                                  >
+                                    Ver Orçamentos
+                                  </DropdownMenuItem>
+                                )}
+                                
+                                <DropdownMenuSeparator />
+                                
+                                <DropdownMenuItem>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Exportar PDF
                                 </DropdownMenuItem>
-                              </>
-                            )}
-                            
-                            {(isCityHall || isGeneralAdmin) && order.quotes > 0 && (
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate(`/service-orders/${order.id}/quotes`)
-                                }
-                              >
-                                Ver Orçamentos
-                              </DropdownMenuItem>
-                            )}
-                            
-                            <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem>
-                              <Download className="mr-2 h-4 w-4" />
-                              Exportar PDF
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -384,32 +537,52 @@ const ServiceOrders = () => {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-start space-x-2">
-                <Checkbox id={`workshop-${i}`} />
-                <div className="grid gap-1.5 leading-none">
-                  <label
-                    htmlFor={`workshop-${i}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Oficina {i}
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    {i % 2 === 0
-                      ? "Especialista em Serviços Mecânicos"
-                      : "Funilaria e Pintura"}
-                  </p>
-                </div>
+            {workshopsLoading ? (
+              <div className="flex justify-center items-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2">Carregando oficinas...</span>
               </div>
-            ))}
+            ) : accreditedWorkshops?.length === 0 ? (
+              <div className="text-center text-muted-foreground">
+                Nenhuma oficina credenciada encontrada. Verifique as configurações de credenciamento.
+              </div>
+            ) : (
+              accreditedWorkshops?.map((workshop) => (
+                <div key={workshop.id} className="flex items-start space-x-2">
+                  <Checkbox 
+                    id={`workshop-${workshop.id}`}
+                    checked={selectedWorkshops.includes(workshop.id)}
+                    onCheckedChange={() => toggleWorkshopSelection(workshop.id)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor={`workshop-${workshop.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {workshop.tradeName}
+                    </label>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSendDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => setShowSendDialog(false)}>
-              Enviar Ordem
+            <Button 
+              onClick={handleSendOrder}
+              disabled={selectedWorkshops.length === 0 || sendOrderMutation.isPending}
+            >
+              {sendOrderMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                "Enviar Ordem"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

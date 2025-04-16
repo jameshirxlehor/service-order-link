@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2 } from "lucide-react";
@@ -21,13 +22,13 @@ const Index = () => {
           <Building2 className="h-20 w-20 text-primary animate-pulse" />
         </div>
         <h1 className="text-4xl font-bold mb-4 text-primary">
-          Service Order Management System
+          Sistema de Gestão de Ordens de Serviço
         </h1>
         <p className="text-xl text-muted-foreground">
-          Efficiently manage service orders and quotes
+          Gerenciamento eficiente de ordens de serviço e orçamentos
         </p>
         <div className="mt-6 text-muted-foreground text-sm">
-          Redirecting to login...
+          Redirecionando para login...
         </div>
       </div>
     </div>

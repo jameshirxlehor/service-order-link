@@ -1,6 +1,9 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, UserRole } from "@/types";
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { User, UserRole, CityHall, Workshop, Admin } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -17,72 +20,153 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Here we would normally check for an existing session
-    // For now, we'll just simulate with localStorage
-    const storedUser = localStorage.getItem("user");
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    
-    setIsLoading(false);
+    // Check for active session
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await getUserProfile(session);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Set up auth change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          await getUserProfile(session);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+        }
+      }
+    );
+
+    checkSession();
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  // Fetch detailed user profile based on auth session
+  const getUserProfile = async (session: Session) => {
+    const { user: authUser } = session;
+    
+    if (!authUser) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // First get the user_profiles record to determine role
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('auth_id', authUser.id)
+        .single();
+      
+      if (profileError) throw profileError;
+      
+      if (!profileData) {
+        console.error("No user profile found");
+        return;
+      }
+      
+      let userData: User | null = null;
+      
+      // Based on role, fetch the appropriate table
+      if (profileData.role === UserRole.CITY_HALL) {
+        const { data: cityHallData, error: cityHallError } = await supabase
+          .from('city_halls')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .single();
+          
+        if (cityHallError) throw cityHallError;
+        
+        if (cityHallData) {
+          userData = {
+            id: profileData.id,
+            login: profileData.login,
+            role: UserRole.CITY_HALL,
+            email: authUser.email || '',
+            phone: profileData.phone,
+            createdAt: new Date(profileData.created_at),
+            updatedAt: new Date(profileData.updated_at),
+            ...cityHallData
+          } as CityHall;
+        }
+      } else if (profileData.role === UserRole.WORKSHOP) {
+        const { data: workshopData, error: workshopError } = await supabase
+          .from('workshops')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .single();
+          
+        if (workshopError) throw workshopError;
+        
+        if (workshopData) {
+          userData = {
+            id: profileData.id,
+            login: profileData.login,
+            role: UserRole.WORKSHOP,
+            email: authUser.email || '',
+            phone: profileData.phone,
+            createdAt: new Date(profileData.created_at),
+            updatedAt: new Date(profileData.updated_at),
+            ...workshopData
+          } as Workshop;
+        }
+      } else {
+        // For admin roles, we just use the profile data
+        userData = {
+          id: profileData.id,
+          login: profileData.login,
+          role: profileData.role,
+          email: authUser.email || '',
+          phone: profileData.phone,
+          createdAt: new Date(profileData.created_at),
+          updatedAt: new Date(profileData.updated_at),
+          name: profileData.name
+        } as Admin;
+      }
+      
+      setUser(userData);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar o perfil do usuário",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      // Mock login - in a real app, this would communicate with a backend
-      // For demo purposes, we'll create mock users for each role
-      let mockUser: User;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      if (email.includes("cityhall")) {
-        mockUser = {
-          id: "ch-1",
-          login: "100001",
-          role: UserRole.CITY_HALL,
-          email: email,
-          phone: "123-456-7890",
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-      } else if (email.includes("workshop")) {
-        mockUser = {
-          id: "ws-1",
-          login: "200001",
-          role: UserRole.WORKSHOP,
-          email: email,
-          phone: "123-456-7890",
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-      } else if (email.includes("queryadmin")) {
-        mockUser = {
-          id: "qa-1",
-          login: "300001",
-          role: UserRole.QUERY_ADMIN,
-          email: email,
-          phone: "123-456-7890",
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-      } else {
-        mockUser = {
-          id: "ga-1",
-          login: "400001",
-          role: UserRole.GENERAL_ADMIN,
-          email: email,
-          phone: "123-456-7890",
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-      }
-      
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      
-    } catch (error) {
+      if (error) throw error;
+    } catch (error: any) {
       console.error("Login failed:", error);
+      
+      toast({
+        title: "Falha no login",
+        description: error.message || "Verifique suas credenciais e tente novamente",
+        variant: "destructive"
+      });
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -90,9 +174,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    // Clear user session
-    setUser(null);
-    localStorage.removeItem("user");
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
+      
+      setUser(null);
+    } catch (error) {
+      console.error("Logout failed:", error);
+      
+      toast({
+        title: "Erro ao sair",
+        description: "Não foi possível encerrar sua sessão. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
