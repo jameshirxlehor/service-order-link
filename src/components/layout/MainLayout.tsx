@@ -1,7 +1,7 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { UserRole } from "@/types";
@@ -14,8 +14,16 @@ interface MainLayoutProps {
 const MainLayout = ({ children }: MainLayoutProps) => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
 
-  console.log("MainLayout - Auth state:", { user, isLoading, isAuthenticated });
+  useEffect(() => {
+    console.log("MainLayout - Auth state:", { 
+      user: user ? `${user.email} (${user.role})` : null, 
+      isLoading, 
+      isAuthenticated,
+      path: location.pathname
+    });
+  }, [user, isLoading, isAuthenticated, location.pathname]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -30,13 +38,13 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   }
 
   // Redirect to login if not authenticated
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     console.log("MainLayout - Not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
   let roleText = "";
-  switch (user?.role) {
+  switch (user.role) {
     case UserRole.CITY_HALL:
       roleText = "City Hall";
       break;

@@ -1,5 +1,5 @@
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
@@ -14,9 +14,17 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
 
+  useEffect(() => {
+    console.log("ProtectedRoute - Auth state:", { 
+      isAuthenticated, 
+      isLoading, 
+      user: user ? `${user.email} (${user.role})` : null,
+      path: location.pathname
+    });
+  }, [isAuthenticated, isLoading, user, location.pathname]);
+
   // Show loading state while checking authentication
   if (isLoading) {
-    console.log("ProtectedRoute - Still loading auth state");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
         <div className="flex flex-col items-center gap-2">
@@ -39,7 +47,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  console.log("ProtectedRoute - Auth checks passed, rendering content");
+  console.log("ProtectedRoute - Auth checks passed, rendering content for:", location.pathname);
   // Render children or outlet (for nested routes)
   return children ? <>{children}</> : <Outlet />;
 };

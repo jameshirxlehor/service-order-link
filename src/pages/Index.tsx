@@ -11,7 +11,6 @@ const Index = () => {
   useEffect(() => {
     console.log("Index page - Auth state:", { isAuthenticated, isLoading });
     
-    // Only redirect when the auth state is determined (not loading)
     if (!isLoading) {
       if (isAuthenticated) {
         console.log("Index page - User authenticated, redirecting to dashboard");
@@ -23,26 +22,19 @@ const Index = () => {
     }
   }, [navigate, isAuthenticated, isLoading]);
   
+  // Show a simple loading screen while initial auth check happens
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20">
       <div className="text-center">
         <div className="flex justify-center mb-6">
-          {isLoading ? (
-            <Loader2 className="h-20 w-20 text-primary animate-spin" />
-          ) : (
-            <Building2 className="h-20 w-20 text-primary animate-pulse" />
-          )}
+          <Loader2 className="h-20 w-20 text-primary animate-spin" />
         </div>
         <h1 className="text-4xl font-bold mb-4 text-primary">
           Sistema de Gestão de Ordens de Serviço
         </h1>
         <p className="text-xl text-muted-foreground">
-          Gerenciamento eficiente de ordens de serviço e orçamentos
+          Verificando sessão...
         </p>
-        <div className="mt-6 text-muted-foreground text-sm">
-          {isLoading ? "Verificando autenticação..." : 
-            `Redirecionando para ${isAuthenticated ? "dashboard" : "login"}...`}
-        </div>
       </div>
     </div>
   );

@@ -88,6 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkSession();
+
+    // Add event listener for storage changes to handle auth state across tabs
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'supabase.auth.token') {
+        console.log("AuthContext - Auth storage changed, reloading page");
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Set up auth state change listener
@@ -108,6 +121,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (event === "SIGNED_OUT") {
           console.log("AuthContext - User signed out, clearing user state");
           setUser(null);
+        } else if (event === "TOKEN_REFRESHED" && session) {
+          console.log("AuthContext - Token refreshed, updating session");
+          setIsLoading(true);
+          await getUserProfile(session);
+          setIsLoading(false);
         }
       }
     );
