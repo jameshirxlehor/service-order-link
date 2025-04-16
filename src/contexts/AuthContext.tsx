@@ -28,11 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       // Don't set isLoading here since it's already set in the parent function
+      console.log("Fetching user profile for:", authUser.email);
       const profileData = await fetchUserProfile(authUser);
       
       if (!profileData) {
+        console.log("No profile found, creating default profile");
         const newUser = await createDefaultProfile(authUser);
         if (newUser) {
+          console.log("Default profile created successfully");
           setUser(newUser);
           toast({
             title: "Perfil criado",
@@ -42,7 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
+      console.log("Profile found, fetching full user data");
       const userData = await fetchUserData(profileData);
+      console.log("User data fetched:", userData);
       setUser(userData);
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -66,9 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await getUserProfile(session);
         } else {
           console.log("No active session found");
+          setUser(null);
         }
       } catch (error) {
         console.error("Error checking session:", error);
+        setUser(null);
       } finally {
         // Always set loading to false when done, regardless of outcome
         console.log("Setting isLoading to false after session check");
@@ -101,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       console.log("Attempting login with:", email);
-      const { error } = await auth.login(email, password);
+      setIsLoading(true);
+      
+      const { error, data } = await auth.login(email, password);
       
       if (error) {
         console.error("Login error:", error);
@@ -113,8 +122,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      // Login successful - the auth state change listener will handle setting the user
-      console.log("Login API call successful");
+      // Don't set user here - the auth state change listener will handle it
+      console.log("Login API call successful:", data);
+      
+      // The auth listener should handle setting the user, but we'll check
+      if (data?.session) {
+        console.log("Session available immediately, fetching profile");
+        await getUserProfile(data.session);
+      }
+      
     } catch (error: any) {
       console.error("Login failed:", error);
       
@@ -125,6 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       throw error;
+    } finally {
+      // Always set loading to false after login attempt
+      setIsLoading(false);
     }
   };
 

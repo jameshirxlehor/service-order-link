@@ -65,10 +65,9 @@ export default function Login() {
   }, [isAuthenticated, authLoading, navigate, from]);
   
   const onSubmit = async (data: LoginFormValues) => {
-    setIsSubmitting(true);
-    
     try {
-      console.log("Submitting login form");
+      setIsSubmitting(true);
+      console.log("Submitting login form with:", data);
       await login(data.email, data.password);
       
       toast({
@@ -84,11 +83,6 @@ export default function Login() {
       setIsSubmitting(false);
     }
   };
-
-  // If already authenticated, don't render the login form (useEffect will redirect)
-  if (isAuthenticated && !authLoading) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary/20 p-4">
