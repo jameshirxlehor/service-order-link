@@ -69,17 +69,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('auth_id', authUser.id)
         .single();
       
-      if (profileError) throw profileError;
+      if (profileError && profileError.code !== 'PGRST116') { // Not found is OK
+        throw profileError;
+      }
       
+      // If no profile exists, create a default one
       if (!profileData) {
-        console.error("No user profile found");
-        return;
+        // Create a default user profile
+        const defaultProfile = {
+          auth_id: authUser.id,
+          login: authUser.email?.split('@')[0] || 'user',
+          role: UserRole.QUERY_ADMIN, // Default role
+          email: authUser.email,
+          phone: '',
+          name: authUser.email?.split('@')[0] || 'User',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert(defaultProfile)
+          .select()
+          .single();
+          
+        if (insertError) throw insertError;
+        
+        if (newProfile) {
+          // Create default admin user with query admin role
+          const userData: Admin = {
+            id: newProfile.id,
+            login: newProfile.login,
+            role: UserRole.QUERY_ADMIN,
+            email: authUser.email || '',
+            phone: newProfile.phone || '',
+            createdAt: new Date(newProfile.created_at),
+            updatedAt: new Date(newProfile.updated_at),
+            name: newProfile.name || 'User'
+          };
+          
+          setUser(userData);
+          setIsLoading(false);
+          
+          toast({
+            title: "Perfil criado",
+            description: "Um perfil padrão foi criado para você.",
+          });
+          
+          return;
+        }
       }
       
       let userData: User | null = null;
       
       // Based on role, fetch the appropriate table
-      if (profileData.role === UserRole.CITY_HALL) {
+      if (profileData?.role === UserRole.CITY_HALL) {
         const { data: cityHallData, error: cityHallError } = await supabase
           .from('city_halls')
           .select('*')
@@ -100,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ...cityHallData
           } as CityHall;
         }
-      } else if (profileData.role === UserRole.WORKSHOP) {
+      } else if (profileData?.role === UserRole.WORKSHOP) {
         const { data: workshopData, error: workshopError } = await supabase
           .from('workshops')
           .select('*')
