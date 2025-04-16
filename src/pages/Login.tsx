@@ -78,7 +78,7 @@ export default function Login() {
   };
 
   // If already authenticated, don't render the login form (useEffect will redirect)
-  if (isAuthenticated && !isLoading) {
+  if (isAuthenticated && !authLoading) {
     return null;
   }
 
@@ -133,8 +133,8 @@ export default function Login() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
-                {isLoading || authLoading ? (
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...

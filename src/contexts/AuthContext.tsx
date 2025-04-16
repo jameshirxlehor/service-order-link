@@ -60,13 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        setIsLoading(true);
         const { data: { session } } = await auth.getSession();
         if (session) {
           await getUserProfile(session);
+        } else {
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error checking session:", error);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -77,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await getUserProfile(session);
         } else if (event === "SIGNED_OUT") {
           setUser(null);
+          setIsLoading(false);
         }
       }
     );
@@ -89,8 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    
     try {
       const { error } = await auth.login(email, password);
       if (error) throw error;
@@ -104,8 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
