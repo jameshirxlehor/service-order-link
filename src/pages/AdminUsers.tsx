@@ -137,6 +137,10 @@ const AdminUsers = () => {
     });
     // For the future: navigate("/admin/users/new");
   };
+
+  // Added fallback for empty data
+  const hasUsers = users && users.length > 0;
+  const hasFilteredUsers = filteredUsers.length > 0;
   
   return (
     <MainLayout>
@@ -176,7 +180,7 @@ const AdminUsers = () => {
                     <SelectValue placeholder="Perfil" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os Perfis</SelectItem>
+                    <SelectItem value="all">Todos os Perfis</SelectItem>
                     <SelectItem value={UserRole.CITY_HALL}>Prefeitura</SelectItem>
                     <SelectItem value={UserRole.WORKSHOP}>Oficina</SelectItem>
                     <SelectItem value={UserRole.QUERY_ADMIN}>Admin. de Consulta</SelectItem>
@@ -231,10 +235,10 @@ const AdminUsers = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {!users || filteredUsers.length === 0 ? (
+                    {!hasFilteredUsers ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          {users && users.length > 0 
+                          {hasUsers 
                             ? "Nenhum usuário encontrado com os filtros atuais" 
                             : "Nenhum usuário cadastrado"}
                         </TableCell>

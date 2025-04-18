@@ -30,15 +30,20 @@ const Index = () => {
     
     checkConnection();
     
-    if (!isLoading) {
-      if (isAuthenticated) {
-        console.log("Index page - User authenticated, redirecting to dashboard");
-        navigate("/dashboard", { replace: true });
-      } else {
-        console.log("Index page - User not authenticated, redirecting to login");
-        navigate("/login", { replace: true });
+    // Add a small delay to avoid flickering during authentication checks
+    const redirectTimer = setTimeout(() => {
+      if (!isLoading) {
+        if (isAuthenticated) {
+          console.log("Index page - User authenticated, redirecting to dashboard");
+          navigate("/dashboard", { replace: true });
+        } else {
+          console.log("Index page - User not authenticated, redirecting to login");
+          navigate("/login", { replace: true });
+        }
       }
-    }
+    }, 500);
+    
+    return () => clearTimeout(redirectTimer);
   }, [navigate, isAuthenticated, isLoading]);
   
   // Show a simple loading screen while initial auth check happens

@@ -29,21 +29,30 @@ export const checkSupabaseConnection = async () => {
   }
 };
 
-// Safe query function with error handling
-export const safeQuery = async (queryFn: () => Promise<any>) => {
+// Safe query function with error handling - fixed to handle Supabase query builders correctly
+export const safeQuery = async (queryFn: () => any) => {
   try {
+    // Execute the query function and await its result
     const result = await queryFn();
+    
+    // Check for Supabase-specific errors
     if (result.error) {
       console.error('Query error:', result.error);
+      
+      // Handle specific foreign key relationship errors
       if (result.error.code === 'PGRST200') {
+        console.error('Foreign key relationship error:', result.error.details);
         toast({
           title: "Erro de consulta",
           description: "Possível erro de relação entre tabelas. Verifique o modelo de dados.",
           variant: "destructive"
         });
       }
+      
       return { data: null, error: result.error };
     }
+    
+    // Return successful data
     return { data: result.data || [], error: null };
   } catch (error) {
     console.error('Query execution error:', error);
