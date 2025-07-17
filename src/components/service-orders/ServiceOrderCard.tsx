@@ -24,14 +24,14 @@ interface ServiceOrderCardProps {
 
 const getStatusBadge = (status: ServiceOrderStatus) => {
   const statusConfig = {
-    DRAFT: { variant: 'secondary' as const, label: 'Rascunho' },
-    SENT_FOR_QUOTES: { variant: 'default' as const, label: 'Enviado para Cotação' },
-    QUOTED: { variant: 'outline' as const, label: 'Cotado' },
-    ACCEPTED: { variant: 'success' as const, label: 'Aceito' },
-    CANCELLED: { variant: 'destructive' as const, label: 'Cancelado' }
+    [ServiceOrderStatus.DRAFT]: { variant: 'secondary' as const, label: 'Rascunho' },
+    [ServiceOrderStatus.SENT_FOR_QUOTES]: { variant: 'default' as const, label: 'Enviado para Cotação' },
+    [ServiceOrderStatus.QUOTED]: { variant: 'outline' as const, label: 'Cotado' },
+    [ServiceOrderStatus.ACCEPTED]: { variant: 'success' as const, label: 'Aceito' },
+    [ServiceOrderStatus.CANCELLED]: { variant: 'destructive' as const, label: 'Cancelado' }
   };
 
-  const config = statusConfig[status] || statusConfig.DRAFT;
+  const config = statusConfig[status] || statusConfig[ServiceOrderStatus.DRAFT];
   return <Badge variant={config.variant}>{config.label}</Badge>;
 };
 
@@ -48,12 +48,12 @@ const ServiceOrderCard = ({ serviceOrder, userType, onStatusChange }: ServiceOrd
 
   const handleSendForQuotes = () => {
     if (onStatusChange) {
-      onStatusChange(serviceOrder.id, 'SENT_FOR_QUOTES');
+      onStatusChange(serviceOrder.id, ServiceOrderStatus.SENT_FOR_QUOTES);
     }
   };
 
-  const canSendForQuotes = userType === UserType.CITY_HALL && serviceOrder.status === 'DRAFT';
-  const canViewQuotes = serviceOrder.status === 'SENT_FOR_QUOTES' || serviceOrder.status === 'QUOTED';
+  const canSendForQuotes = userType === UserType.CITY_HALL && serviceOrder.status === ServiceOrderStatus.DRAFT;
+  const canViewQuotes = serviceOrder.status === ServiceOrderStatus.SENT_FOR_QUOTES || serviceOrder.status === ServiceOrderStatus.QUOTED;
 
   return (
     <Card className="hover:shadow-md transition-shadow">

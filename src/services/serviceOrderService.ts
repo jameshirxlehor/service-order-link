@@ -10,12 +10,7 @@ export const serviceOrderService = {
         .from('service_orders')
         .select(`
           *,
-          city_hall:city_halls!city_hall_id(
-            user_id,
-            parts_discount_percentage,
-            labor_discount_percentage
-          ),
-          city_hall_profile:user_profiles!city_hall_id(
+          city_hall:user_profiles!city_hall_id(
             trade_name,
             corporate_name,
             city,
@@ -55,12 +50,10 @@ export const serviceOrderService = {
         .from('service_orders')
         .select(`
           *,
-          city_hall:city_halls!city_hall_id(*),
-          city_hall_profile:user_profiles!city_hall_id(*),
+          city_hall:user_profiles!city_hall_id(*),
           quotes(
             *,
-            workshop:workshops!workshop_id(*),
-            workshop_profile:user_profiles!workshop_id(*)
+            workshop:user_profiles!workshop_id(*)
           )
         `)
         .eq('id', id)
@@ -101,7 +94,7 @@ export const serviceOrderService = {
         .insert([{
           ...serviceOrderData,
           os_number: osNumber,
-          status: 'DRAFT'
+          status: ServiceOrderStatus.DRAFT
         }])
         .select()
         .single();
@@ -123,9 +116,9 @@ export const serviceOrderService = {
     try {
       const updateData: any = { status, updated_at: new Date().toISOString() };
       
-      if (status === 'SENT_FOR_QUOTES') {
+      if (status === ServiceOrderStatus.SENT_FOR_QUOTES) {
         updateData.sent_for_quotes_at = new Date().toISOString();
-      } else if (status === 'CANCELLED') {
+      } else if (status === ServiceOrderStatus.CANCELLED) {
         updateData.cancelled_at = new Date().toISOString();
       }
 
