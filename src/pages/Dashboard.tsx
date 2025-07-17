@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
-import { UserRole } from "@/types";
+import { UserType } from "@/types";
 import {
   Card,
   CardContent,
@@ -32,10 +32,10 @@ const Dashboard = () => {
 
   if (!user) return null;
 
-  const isCityHall = user.role === UserRole.CITY_HALL;
-  const isWorkshop = user.role === UserRole.WORKSHOP;
-  const isQueryAdmin = user.role === UserRole.QUERY_ADMIN;
-  const isGeneralAdmin = user.role === UserRole.GENERAL_ADMIN;
+  const isCityHall = user.user_type === UserType.CITY_HALL;
+  const isWorkshop = user.user_type === UserType.WORKSHOP;
+  const isQueryAdmin = user.user_type === UserType.QUERY_ADMIN;
+  const isGeneralAdmin = user.user_type === UserType.GENERAL_ADMIN;
 
   return (
     <MainLayout>

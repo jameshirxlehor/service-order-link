@@ -1,13 +1,13 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User } from "@/types";
+import { UserProfile } from "@/types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { createDefaultProfile, fetchUserProfile, fetchUserData } from "@/services/userProfileService";
 import { toast } from "@/hooks/use-toast";
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean }>;
   logout: () => Promise<void>;
@@ -17,7 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
