@@ -255,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading, 
       initialized,
       sessionChecked,
-      user: user ? `${user.email} (${user.role})` : null 
+      user: user ? `${user.responsible_email} (${user.user_type})` : null 
     });
   }, [user, isLoading, initialized, sessionChecked]);
 

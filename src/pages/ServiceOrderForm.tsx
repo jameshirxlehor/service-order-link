@@ -505,9 +505,10 @@ const ServiceOrderForm = () => {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value={ServiceType.PREVENTIVE}>Preventive</SelectItem>
-                                  <SelectItem value={ServiceType.CORRECTIVE}>Corrective</SelectItem>
-                                  <SelectItem value={ServiceType.EMERGENCY}>Emergency</SelectItem>
+                                  <SelectItem value={ServiceType.MAINTENANCE}>Manutenção</SelectItem>
+                                  <SelectItem value={ServiceType.REPAIR}>Reparo</SelectItem>
+                                  <SelectItem value={ServiceType.INSPECTION}>Inspeção</SelectItem>
+                                  <SelectItem value={ServiceType.OTHER}>Outros</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />

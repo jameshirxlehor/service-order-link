@@ -76,10 +76,10 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
 
   if (!user) return null;
 
-  const isCityHall = user.role === UserRole.CITY_HALL;
-  const isWorkshop = user.role === UserRole.WORKSHOP;
-  const isQueryAdmin = user.role === UserRole.QUERY_ADMIN;
-  const isGeneralAdmin = user.role === UserRole.GENERAL_ADMIN;
+  const isCityHall = user.user_type === UserRole.CITY_HALL;
+  const isWorkshop = user.user_type === UserRole.WORKSHOP;
+  const isQueryAdmin = user.user_type === UserRole.QUERY_ADMIN;
+  const isGeneralAdmin = user.user_type === UserRole.GENERAL_ADMIN;
 
   const handleNavigation = (href: string, implemented: boolean = true) => {
     if (implemented) {

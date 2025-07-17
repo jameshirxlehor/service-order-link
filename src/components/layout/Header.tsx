@@ -27,7 +27,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, userRole }: HeaderProps) => {
 
   // Extract initials for avatar
   const getInitials = () => {
-    return user.email.substring(0, 2).toUpperCase();
+    return user.responsible_email.substring(0, 2).toUpperCase();
   };
 
   return (

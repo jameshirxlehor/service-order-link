@@ -1,41 +1,18 @@
-import { User, UserRole, CityHall, Workshop, Admin } from "@/types";
+import { UserProfile, UserType } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
-export const createDefaultProfile = async (authUser: SupabaseUser) => {
-  const defaultProfile = {
-    auth_id: authUser.id,
-    login: authUser.email?.split('@')[0] || 'user',
-    role: UserRole.QUERY_ADMIN,
-    email: authUser.email,
-    phone: '',
-    name: authUser.email?.split('@')[0] || 'User',
+export const createDefaultProfile = async (authUser: SupabaseUser): Promise<UserProfile | null> => {
+  // For now, return a mock profile until the actual database tables are created
+  return {
+    id: authUser.id,
+    user_type: UserType.QUERY_ADMIN,
+    login_number: authUser.email?.split('@')[0] || 'user',
+    responsible_email: authUser.email || '',
+    contact_phone: '',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
-  };
-
-  const { data: newProfile, error: insertError } = await supabase
-    .from('user_profiles')
-    .insert(defaultProfile)
-    .select()
-    .single();
-
-  if (insertError) throw insertError;
-  
-  if (newProfile) {
-    return {
-      id: newProfile.id,
-      login: newProfile.login,
-      role: UserRole.QUERY_ADMIN,
-      email: authUser.email || '',
-      phone: newProfile.phone || '',
-      createdAt: new Date(newProfile.created_at),
-      updatedAt: new Date(newProfile.updated_at),
-      name: newProfile.name || 'User'
-    } as Admin;
-  }
-  
-  return null;
+  } as UserProfile;
 };
 
 export const fetchUserProfile = async (authUser: SupabaseUser) => {
@@ -52,59 +29,8 @@ export const fetchUserProfile = async (authUser: SupabaseUser) => {
   return profileData;
 };
 
-export const fetchUserData = async (profileData: any): Promise<User | null> => {
-  if (profileData?.role === UserRole.CITY_HALL) {
-    const { data: cityHallData, error: cityHallError } = await supabase
-      .from('city_halls')
-      .select('*')
-      .eq('profile_id', profileData.id)
-      .single();
-      
-    if (cityHallError) throw cityHallError;
-    
-    if (cityHallData) {
-      return {
-        id: profileData.id,
-        login: profileData.login,
-        role: UserRole.CITY_HALL,
-        email: profileData.email || '',
-        phone: profileData.phone,
-        createdAt: new Date(profileData.created_at),
-        updatedAt: new Date(profileData.updated_at),
-        ...cityHallData
-      } as CityHall;
-    }
-  } else if (profileData?.role === UserRole.WORKSHOP) {
-    const { data: workshopData, error: workshopError } = await supabase
-      .from('workshops')
-      .select('*')
-      .eq('profile_id', profileData.id)
-      .single();
-      
-    if (workshopError) throw workshopError;
-    
-    if (workshopData) {
-      return {
-        id: profileData.id,
-        login: profileData.login,
-        role: UserRole.WORKSHOP,
-        email: profileData.email || '',
-        phone: profileData.phone,
-        createdAt: new Date(profileData.created_at),
-        updatedAt: new Date(profileData.updated_at),
-        ...workshopData
-      } as Workshop;
-    }
-  }
-  
-  return {
-    id: profileData.id,
-    login: profileData.login,
-    role: profileData.role,
-    email: profileData.email || '',
-    phone: profileData.phone,
-    createdAt: new Date(profileData.created_at),
-    updatedAt: new Date(profileData.updated_at),
-    name: profileData.name
-  } as Admin;
+export const fetchUserData = async (profileData: any): Promise<UserProfile | null> => {
+  // For now, just return the profile data as UserProfile
+  // In the future, we can join with city_halls/workshops tables if needed
+  return profileData as UserProfile;
 };

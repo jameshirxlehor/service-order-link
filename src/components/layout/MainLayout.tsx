@@ -20,7 +20,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   useEffect(() => {
     console.log("MainLayout - Auth state:", { 
-      user: user ? `${user.email} (${user.role})` : null, 
+      user: user ? `${user.responsible_email} (${user.user_type})` : null, 
       isLoading, 
       isAuthenticated,
       path: location.pathname
@@ -73,7 +73,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   }
 
   let roleText = "";
-  switch (user.role) {
+  switch (user.user_type) {
     case UserRole.CITY_HALL:
       roleText = "Prefeitura";
       break;

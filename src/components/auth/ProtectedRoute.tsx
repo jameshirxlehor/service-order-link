@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     console.log("ProtectedRoute - Auth state:", { 
       isAuthenticated, 
       isLoading, 
-      user: user ? `${user.email} (${user.role})` : null,
+      user: user ? `${user.responsible_email} (${user.user_type})` : null,
       path: location.pathname
     });
 
@@ -74,7 +74,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   // Check role-based permissions if roles are specified
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !allowedRoles.includes(user.user_type)) {
     console.log("ProtectedRoute - User role not allowed, redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
