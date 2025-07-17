@@ -1,6 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
-import { ServiceOrder, ServiceOrderStatus, VehicleType, FuelType, TransmissionType, ServiceType } from '@/types';
+import { ServiceOrder, ServiceOrderStatus } from '@/types';
 
 export const serviceOrderService = {
   // Get all service orders for a user (with proper filtering based on user type)
@@ -8,15 +8,7 @@ export const serviceOrderService = {
     try {
       let query = supabase
         .from('service_orders')
-        .select(`
-          *,
-          city_hall:user_profiles!city_hall_id(
-            trade_name,
-            corporate_name,
-            city,
-            state
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       // Filter based on user type
@@ -26,7 +18,7 @@ export const serviceOrderService = {
       // For WORKSHOP users, we'll need to get service orders that are available for quoting
       // For now, let them see all service orders that are SENT_FOR_QUOTES
       else if (userType === 'WORKSHOP') {
-        query = query.eq('status', 'SENT_FOR_QUOTES');
+        query = query.eq('status', ServiceOrderStatus.SENT_FOR_QUOTES);
       }
 
       const { data, error } = await query;
@@ -48,14 +40,7 @@ export const serviceOrderService = {
     try {
       const { data, error } = await supabase
         .from('service_orders')
-        .select(`
-          *,
-          city_hall:user_profiles!city_hall_id(*),
-          quotes(
-            *,
-            workshop:user_profiles!workshop_id(*)
-          )
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -92,8 +77,27 @@ export const serviceOrderService = {
       const { data, error } = await supabase
         .from('service_orders')
         .insert([{
-          ...serviceOrderData,
           os_number: osNumber,
+          city_hall_id: serviceOrderData.city_hall_id,
+          vehicle_type: serviceOrderData.vehicle_type,
+          brand: serviceOrderData.brand,
+          model: serviceOrderData.model,
+          fuel: serviceOrderData.fuel,
+          year: serviceOrderData.year,
+          engine: serviceOrderData.engine,
+          color: serviceOrderData.color,
+          transmission: serviceOrderData.transmission,
+          license_plate: serviceOrderData.license_plate,
+          chassis: serviceOrderData.chassis,
+          km: serviceOrderData.km,
+          vehicle_market_value: serviceOrderData.vehicle_market_value,
+          registration: serviceOrderData.registration,
+          tank_capacity: serviceOrderData.tank_capacity,
+          service_city: serviceOrderData.service_city,
+          service_type: serviceOrderData.service_type,
+          service_category: serviceOrderData.service_category,
+          vehicle_location: serviceOrderData.vehicle_location,
+          notes: serviceOrderData.notes,
           status: ServiceOrderStatus.DRAFT
         }])
         .select()
