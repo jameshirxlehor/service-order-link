@@ -67,39 +67,41 @@ export const serviceOrderService = {
         .limit(1);
 
       let nextNumber = 1;
-      if (existingOrders && existingOrders.length > 0) {
+      if (existingOrders && existingOrders.length > 0 && existingOrders[0]?.os_number) {
         const lastNumber = parseInt(existingOrders[0].os_number.replace(/\D/g, '')) || 0;
         nextNumber = lastNumber + 1;
       }
 
       const osNumber = `OS${nextNumber.toString().padStart(6, '0')}`;
 
+      const insertData = {
+        os_number: osNumber,
+        city_hall_id: serviceOrderData.city_hall_id,
+        vehicle_type: serviceOrderData.vehicle_type,
+        brand: serviceOrderData.brand,
+        model: serviceOrderData.model,
+        fuel: serviceOrderData.fuel,
+        year: serviceOrderData.year,
+        engine: serviceOrderData.engine,
+        color: serviceOrderData.color,
+        transmission: serviceOrderData.transmission,
+        license_plate: serviceOrderData.license_plate,
+        chassis: serviceOrderData.chassis,
+        km: serviceOrderData.km,
+        vehicle_market_value: serviceOrderData.vehicle_market_value,
+        registration: serviceOrderData.registration,
+        tank_capacity: serviceOrderData.tank_capacity,
+        service_city: serviceOrderData.service_city,
+        service_type: serviceOrderData.service_type,
+        service_category: serviceOrderData.service_category,
+        vehicle_location: serviceOrderData.vehicle_location,
+        notes: serviceOrderData.notes,
+        status: ServiceOrderStatus.DRAFT
+      };
+
       const { data, error } = await supabase
         .from('service_orders')
-        .insert([{
-          os_number: osNumber,
-          city_hall_id: serviceOrderData.city_hall_id,
-          vehicle_type: serviceOrderData.vehicle_type,
-          brand: serviceOrderData.brand,
-          model: serviceOrderData.model,
-          fuel: serviceOrderData.fuel,
-          year: serviceOrderData.year,
-          engine: serviceOrderData.engine,
-          color: serviceOrderData.color,
-          transmission: serviceOrderData.transmission,
-          license_plate: serviceOrderData.license_plate,
-          chassis: serviceOrderData.chassis,
-          km: serviceOrderData.km,
-          vehicle_market_value: serviceOrderData.vehicle_market_value,
-          registration: serviceOrderData.registration,
-          tank_capacity: serviceOrderData.tank_capacity,
-          service_city: serviceOrderData.service_city,
-          service_type: serviceOrderData.service_type,
-          service_category: serviceOrderData.service_category,
-          vehicle_location: serviceOrderData.vehicle_location,
-          notes: serviceOrderData.notes,
-          status: ServiceOrderStatus.DRAFT
-        }])
+        .insert(insertData)
         .select()
         .single();
 
@@ -118,7 +120,10 @@ export const serviceOrderService = {
   // Update service order status
   async updateServiceOrderStatus(id: string, status: ServiceOrderStatus) {
     try {
-      const updateData: any = { status, updated_at: new Date().toISOString() };
+      const updateData: Record<string, any> = { 
+        status, 
+        updated_at: new Date().toISOString() 
+      };
       
       if (status === ServiceOrderStatus.SENT_FOR_QUOTES) {
         updateData.sent_for_quotes_at = new Date().toISOString();
