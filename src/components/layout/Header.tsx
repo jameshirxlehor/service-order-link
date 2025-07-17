@@ -25,8 +25,11 @@ const Header = ({ sidebarOpen, setSidebarOpen, userRole }: HeaderProps) => {
 
   if (!user) return null;
 
-  // Extract initials for avatar
+  // Extract initials for avatar with safety check
   const getInitials = () => {
+    if (!user.responsible_email) {
+      return "U"; // Default fallback
+    }
     return user.responsible_email.substring(0, 2).toUpperCase();
   };
 
