@@ -1,6 +1,9 @@
+import { createClient } from '@supabase/supabase-js';
 
-import { supabase } from '@/lib/supabase';
-import { ServiceOrder, ServiceOrderStatus } from '@/types';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dybrlyssenhxbpnfhiwb.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnJseXNzZW5oeGJwbmZoaXdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NzA2NTgsImV4cCI6MjA2MDM0NjY1OH0.qeByyMkxftSK5P9JfDo5FFmq8Na4DgYlPTRxvWNcEuU';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const serviceOrderService = {
   // Get all service orders for a user (with proper filtering based on user type)
@@ -9,11 +12,11 @@ export const serviceOrderService = {
       let query = supabase
         .from('service_orders')
         .select('*')
-        .order('createdAt', { ascending: false });
+        .order('created_at', { ascending: false });
 
       // Filter based on user type
       if (userType === 'CITY_HALL') {
-        query = query.eq('cityHallId', userId);
+        query = query.eq('city_hall_id', userId);
       }
       // For WORKSHOP users, we'll need to get service orders that are available for quoting
       // For now, let them see all service orders that are SENT_FOR_QUOTES
@@ -57,39 +60,35 @@ export const serviceOrderService = {
   },
 
   // Create a new service order
-  async createServiceOrder(serviceOrderData: Partial<ServiceOrder>) {
+  async createServiceOrder(serviceOrderData: any) {
     try {
       // Generate OS number (simple increment for now)
       const timestamp = Date.now();
       const osNumber = `OS${timestamp.toString().slice(-6)}`;
 
-      const insertData = {
-        number: osNumber,
-        cityHallId: serviceOrderData.city_hall_id || '',
+      const insertData: any = {
+        os_number: osNumber,
+        city_hall_id: serviceOrderData.city_hall_id || '',
         status: 'DRAFT',
-        vehicle: {
-          type: serviceOrderData.vehicle_type || '',
-          brand: serviceOrderData.brand || '',
-          model: serviceOrderData.model || '',
-          fuel: serviceOrderData.fuel || '',
-          year: serviceOrderData.year?.toString() || '',
-          engine: serviceOrderData.engine || '',
-          color: serviceOrderData.color || '',
-          transmission: serviceOrderData.transmission || '',
-          licensePlate: serviceOrderData.license_plate || '',
-          chassis: serviceOrderData.chassis || '',
-          km: serviceOrderData.km || 0,
-          marketValue: serviceOrderData.vehicle_market_value || 0,
-          registration: serviceOrderData.registration || '',
-          tankCapacity: serviceOrderData.tank_capacity || 0
-        },
-        serviceInfo: {
-          city: serviceOrderData.service_city || '',
-          type: serviceOrderData.service_type || '',
-          category: serviceOrderData.service_category || '',
-          location: serviceOrderData.vehicle_location || '',
-          notes: serviceOrderData.notes || ''
-        }
+        vehicle_type: serviceOrderData.vehicle_type || 'CAR',
+        brand: serviceOrderData.brand || '',
+        model: serviceOrderData.model || '',
+        fuel: serviceOrderData.fuel || 'GASOLINE',
+        year: serviceOrderData.year || null,
+        engine: serviceOrderData.engine || '',
+        color: serviceOrderData.color || '',
+        transmission: serviceOrderData.transmission || 'MANUAL',
+        license_plate: serviceOrderData.license_plate || '',
+        chassis: serviceOrderData.chassis || '',
+        km: serviceOrderData.km || 0,
+        vehicle_market_value: serviceOrderData.vehicle_market_value || 0,
+        registration: serviceOrderData.registration || '',
+        tank_capacity: serviceOrderData.tank_capacity || 0,
+        service_city: serviceOrderData.service_city || '',
+        service_type: serviceOrderData.service_type || 'MAINTENANCE',
+        service_category: serviceOrderData.service_category || '',
+        vehicle_location: serviceOrderData.vehicle_location || '',
+        notes: serviceOrderData.notes || ''
       };
 
       const { data, error } = await supabase
@@ -111,11 +110,11 @@ export const serviceOrderService = {
   },
 
   // Update service order status
-  async updateServiceOrderStatus(id: string, status: ServiceOrderStatus) {
+  async updateServiceOrderStatus(id: string, status: string) {
     try {
-      const updateData: Record<string, any> = { 
-        status: status.toString(),
-        updatedAt: new Date().toISOString() 
+      const updateData: any = { 
+        status: status,
+        updated_at: new Date().toISOString() 
       };
 
       const { data, error } = await supabase
