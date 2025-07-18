@@ -9,16 +9,16 @@ export const serviceOrderService = {
       let query = supabase
         .from('service_orders')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('createdAt', { ascending: false });
 
       // Filter based on user type
       if (userType === 'CITY_HALL') {
-        query = query.eq('city_hall_id', userId);
+        query = query.eq('cityHallId', userId);
       }
       // For WORKSHOP users, we'll need to get service orders that are available for quoting
       // For now, let them see all service orders that are SENT_FOR_QUOTES
       else if (userType === 'WORKSHOP') {
-        query = query.eq('status', ServiceOrderStatus.SENT_FOR_QUOTES);
+        query = query.eq('status', 'SENT_FOR_QUOTES');
       }
 
       const { data, error } = await query;
@@ -60,43 +60,36 @@ export const serviceOrderService = {
   async createServiceOrder(serviceOrderData: Partial<ServiceOrder>) {
     try {
       // Generate OS number (simple increment for now)
-      const { data: existingOrders } = await supabase
-        .from('service_orders')
-        .select('os_number')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      let nextNumber = 1;
-      if (existingOrders && existingOrders.length > 0 && existingOrders[0]?.os_number) {
-        const lastNumber = parseInt(existingOrders[0].os_number.replace(/\D/g, '')) || 0;
-        nextNumber = lastNumber + 1;
-      }
-
-      const osNumber = `OS${nextNumber.toString().padStart(6, '0')}`;
+      const timestamp = Date.now();
+      const osNumber = `OS${timestamp.toString().slice(-6)}`;
 
       const insertData = {
-        os_number: osNumber,
-        city_hall_id: serviceOrderData.city_hall_id,
-        vehicle_type: serviceOrderData.vehicle_type,
-        brand: serviceOrderData.brand,
-        model: serviceOrderData.model,
-        fuel: serviceOrderData.fuel,
-        year: serviceOrderData.year,
-        engine: serviceOrderData.engine,
-        color: serviceOrderData.color,
-        transmission: serviceOrderData.transmission,
-        license_plate: serviceOrderData.license_plate,
-        chassis: serviceOrderData.chassis,
-        km: serviceOrderData.km,
-        vehicle_market_value: serviceOrderData.vehicle_market_value,
-        registration: serviceOrderData.registration,
-        tank_capacity: serviceOrderData.tank_capacity,
-        service_city: serviceOrderData.service_city,
-        service_type: serviceOrderData.service_type,
-        service_category: serviceOrderData.service_category,
-        vehicle_location: serviceOrderData.vehicle_location,
-        notes: serviceOrderData.notes,
-        status: ServiceOrderStatus.DRAFT
+        number: osNumber,
+        cityHallId: serviceOrderData.city_hall_id || '',
+        status: 'DRAFT',
+        vehicle: {
+          type: serviceOrderData.vehicle_type || '',
+          brand: serviceOrderData.brand || '',
+          model: serviceOrderData.model || '',
+          fuel: serviceOrderData.fuel || '',
+          year: serviceOrderData.year?.toString() || '',
+          engine: serviceOrderData.engine || '',
+          color: serviceOrderData.color || '',
+          transmission: serviceOrderData.transmission || '',
+          licensePlate: serviceOrderData.license_plate || '',
+          chassis: serviceOrderData.chassis || '',
+          km: serviceOrderData.km || 0,
+          marketValue: serviceOrderData.vehicle_market_value || 0,
+          registration: serviceOrderData.registration || '',
+          tankCapacity: serviceOrderData.tank_capacity || 0
+        },
+        serviceInfo: {
+          city: serviceOrderData.service_city || '',
+          type: serviceOrderData.service_type || '',
+          category: serviceOrderData.service_category || '',
+          location: serviceOrderData.vehicle_location || '',
+          notes: serviceOrderData.notes || ''
+        }
       };
 
       const { data, error } = await supabase
@@ -121,15 +114,9 @@ export const serviceOrderService = {
   async updateServiceOrderStatus(id: string, status: ServiceOrderStatus) {
     try {
       const updateData: Record<string, any> = { 
-        status, 
-        updated_at: new Date().toISOString() 
+        status: status.toString(),
+        updatedAt: new Date().toISOString() 
       };
-      
-      if (status === ServiceOrderStatus.SENT_FOR_QUOTES) {
-        updateData.sent_for_quotes_at = new Date().toISOString();
-      } else if (status === ServiceOrderStatus.CANCELLED) {
-        updateData.cancelled_at = new Date().toISOString();
-      }
 
       const { data, error } = await supabase
         .from('service_orders')
