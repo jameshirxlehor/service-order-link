@@ -12,6 +12,7 @@ import ServiceOrders from "./pages/ServiceOrders";
 import ServiceOrderForm from "./pages/ServiceOrderForm";
 import ServiceOrderDetail from "./pages/ServiceOrderDetail";
 import ServiceOrderQuotes from "./pages/ServiceOrderQuotes";
+import MyQuotes from "./pages/MyQuotes";
 import AdminUsers from "./pages/AdminUsers";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -51,6 +52,7 @@ const App = () => (
               {/* Routes for viewing service orders and quotes */}
               <Route path="/service-orders/:id" element={<ServiceOrderDetail />} />
               <Route path="/service-orders/:id/quotes" element={<ServiceOrderQuotes />} />
+              <Route path="/my-quotes" element={<MyQuotes />} />
               
               {/* Admin Only Routes */}
               <Route element={<ProtectedRoute allowedRoles={[UserRole.GENERAL_ADMIN]} />}>
