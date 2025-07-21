@@ -388,9 +388,9 @@ const Dashboard = () => {
                   className="w-full"
                   onClick={() =>
                     navigate(
-                      isCityHall || isQueryAdmin || isGeneralAdmin
-                        ? "/quotes"
-                        : "/my-quotes"
+                      isWorkshop
+                        ? "/my-quotes"
+                        : "/service-orders"
                     )
                   }
                 >

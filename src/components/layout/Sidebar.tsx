@@ -176,7 +176,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                   title="Minhas Cotações"
                   active={location.pathname.startsWith("/my-quotes")}
                   collapsed={collapsed}
-                  onClick={() => handleNavigation("/my-quotes", false)}
+                  onClick={() => handleNavigation("/my-quotes")}
                 />
               </>
             )}
