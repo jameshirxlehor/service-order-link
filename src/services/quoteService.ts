@@ -4,7 +4,7 @@ import { Quote, QuoteStatus } from "@/types";
 const mockQuotes: Quote[] = [
   {
     id: "1",
-    service_order_id: "test-id",
+    service_order_id: "1", // Use actual service order IDs
     workshop_id: "workshop-1",
     quote_date: new Date().toISOString(),
     validity_days: 30,
@@ -44,7 +44,7 @@ const mockQuotes: Quote[] = [
   },
   {
     id: "2",
-    service_order_id: "test-id",
+    service_order_id: "1", // Use actual service order IDs
     workshop_id: "workshop-2",
     quote_date: new Date().toISOString(),
     validity_days: 30,
