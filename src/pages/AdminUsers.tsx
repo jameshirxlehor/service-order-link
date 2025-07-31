@@ -1,9 +1,9 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
-import { supabase, safeQuery } from "@/lib/supabase";
-import { UserRole } from "@/types";
+import { userService, CreateUserData } from "@/services/userService";
+import { UserRole, UserType } from "@/types";
 import {
   Users,
   User,
@@ -48,37 +48,115 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { UserForm } from "@/components/users/UserForm";
 
 const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   // Query to fetch all users with error handling
   const { data: users, isLoading, error, refetch } = useQuery({
     queryKey: ['users', roleFilter],
     queryFn: async () => {
-      let query = supabase
-        .from('user_profiles')
-        .select('*');
-      
-      if (roleFilter) {
-        query = query.eq('role', roleFilter);
-      }
-      
-      const { data, error } = await safeQuery(() => 
-        query.order('created_at', { ascending: false })
-      );
-        
+      const { data, error } = await userService.getAllUsers(roleFilter || undefined);
       if (error) throw error;
       return data || [];
     },
     retry: 1,
     refetchOnWindowFocus: false,
+  });
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: (userData: CreateUserData) => userService.createUser(userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsCreateModalOpen(false);
+      toast({
+        title: "Usuário criado com sucesso",
+        description: "O novo usuário foi adicionado ao sistema.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao criar usuário",
+        description: "Ocorreu um erro ao criar o usuário. Tente novamente.",
+        variant: "destructive",
+      });
+      console.error('Error creating user:', error);
+    },
+  });
+
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, userData }: { id: string; userData: Partial<CreateUserData> }) => 
+      userService.updateUser(id, userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsEditModalOpen(false);
+      setSelectedUser(null);
+      toast({
+        title: "Usuário atualizado com sucesso",
+        description: "As informações do usuário foram atualizadas.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao atualizar usuário",
+        description: "Ocorreu um erro ao atualizar o usuário. Tente novamente.",
+        variant: "destructive",
+      });
+      console.error('Error updating user:', error);
+    },
+  });
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => userService.deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsDeleteDialogOpen(false);
+      setSelectedUser(null);
+      toast({
+        title: "Usuário excluído com sucesso",
+        description: "O usuário foi removido do sistema.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao excluir usuário",
+        description: "Ocorreu um erro ao excluir o usuário. Tente novamente.",
+        variant: "destructive",
+      });
+      console.error('Error deleting user:', error);
+    },
   });
   
   // Function to filter users based on search term
@@ -131,11 +209,33 @@ const AdminUsers = () => {
   };
 
   const handleCreateUser = () => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A criação de usuários será implementada em breve.",
-    });
-    // For the future: navigate("/admin/users/new");
+    setIsCreateModalOpen(true);
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteUser = (user: any) => {
+    setSelectedUser(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleCreateSubmit = (userData: CreateUserData) => {
+    createUserMutation.mutate(userData);
+  };
+
+  const handleEditSubmit = (userData: CreateUserData) => {
+    if (selectedUser) {
+      updateUserMutation.mutate({ id: selectedUser.id, userData });
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedUser) {
+      deleteUserMutation.mutate(selectedUser.id);
+    }
   };
 
   // Added fallback for empty data
@@ -265,31 +365,13 @@ const AdminUsers = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => {
-                                  toast({
-                                    title: "Funcionalidade em desenvolvimento",
-                                    description: "A visualização de detalhes será implementada em breve.",
-                                  });
-                                }}>
-                                  Ver Detalhes
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {
-                                  toast({
-                                    title: "Funcionalidade em desenvolvimento",
-                                    description: "A edição de usuários será implementada em breve.",
-                                  });
-                                }}>
-                                  Editar
+                                <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                  Ver Detalhes / Editar
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-destructive"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Funcionalidade em desenvolvimento",
-                                      description: "A exclusão de usuários será implementada em breve.",
-                                    });
-                                  }}
+                                  onClick={() => handleDeleteUser(user)}
                                 >
                                   Excluir
                                 </DropdownMenuItem>
@@ -305,6 +387,88 @@ const AdminUsers = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Create User Modal */}
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Usuário</DialogTitle>
+              <DialogDescription>
+                Preencha as informações para criar um novo usuário no sistema.
+              </DialogDescription>
+            </DialogHeader>
+            <UserForm
+              onSubmit={handleCreateSubmit}
+              onCancel={() => setIsCreateModalOpen(false)}
+              isLoading={createUserMutation.isPending}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit User Modal */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Usuário</DialogTitle>
+              <DialogDescription>
+                Atualize as informações do usuário.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedUser && (
+              <UserForm
+                initialData={{
+                  user_type: selectedUser.user_type || selectedUser.role,
+                  login_number: selectedUser.login_number || selectedUser.login,
+                  trade_name: selectedUser.trade_name,
+                  corporate_name: selectedUser.corporate_name,
+                  cnpj: selectedUser.cnpj,
+                  state_registration: selectedUser.state_registration,
+                  city: selectedUser.city,
+                  state: selectedUser.state,
+                  zip_code: selectedUser.zip_code,
+                  address: selectedUser.address,
+                  responsible_email: selectedUser.responsible_email || selectedUser.email,
+                  contact_phone: selectedUser.contact_phone || selectedUser.phone,
+                }}
+                onSubmit={handleEditSubmit}
+                onCancel={() => {
+                  setIsEditModalOpen(false);
+                  setSelectedUser(null);
+                }}
+                isLoading={updateUserMutation.isPending}
+                isEditing={true}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o usuário "{selectedUser?.name || selectedUser?.trade_name || selectedUser?.login}"?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setSelectedUser(null);
+              }}>
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteUserMutation.isPending}
+              >
+                {deleteUserMutation.isPending ? "Excluindo..." : "Excluir"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
