@@ -39,26 +39,18 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             
             {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/service-orders" element={<ServiceOrders />} />
-              
-              {/* City Hall Only Routes */}
-              <Route element={<ProtectedRoute allowedRoles={[UserType.CITY_HALL]} />}>
-                <Route path="/service-orders/new" element={<ServiceOrderForm />} />
-                <Route path="/service-orders/:id/edit" element={<ServiceOrderForm />} />
-              </Route>
-              
-              {/* Routes for viewing service orders and quotes */}
-              <Route path="/service-orders/:id" element={<ServiceOrderDetail />} />
-              <Route path="/service-orders/:id/quotes" element={<ServiceOrderQuotes />} />
-              <Route path="/my-quotes" element={<MyQuotes />} />
-              
-              {/* Admin Only Routes */}
-              <Route element={<ProtectedRoute allowedRoles={[UserType.GENERAL_ADMIN]} />}>
-                <Route path="/admin/users" element={<AdminUsers />} />
-              </Route>
-            </Route>
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/service-orders" element={<ProtectedRoute><ServiceOrders /></ProtectedRoute>} />
+            <Route path="/service-orders/:id" element={<ProtectedRoute><ServiceOrderDetail /></ProtectedRoute>} />
+            <Route path="/service-orders/:id/quotes" element={<ProtectedRoute><ServiceOrderQuotes /></ProtectedRoute>} />
+            <Route path="/my-quotes" element={<ProtectedRoute><MyQuotes /></ProtectedRoute>} />
+            
+            {/* City Hall Only Routes */}
+            <Route path="/service-orders/new" element={<ProtectedRoute allowedRoles={[UserType.CITY_HALL]}><ServiceOrderForm /></ProtectedRoute>} />
+            <Route path="/service-orders/:id/edit" element={<ProtectedRoute allowedRoles={[UserType.CITY_HALL]}><ServiceOrderForm /></ProtectedRoute>} />
+            
+            {/* Admin Only Routes */}
+            <Route path="/admin/users" element={<ProtectedRoute allowedRoles={[UserType.GENERAL_ADMIN]}><AdminUsers /></ProtectedRoute>} />
             
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
