@@ -3,13 +3,32 @@ import { UserType } from "@/types";
 
 export const dashboardService = {
   // Get dashboard stats for City Hall users
-  async getCityHallStats(cityHallId: string) {
+  async getCityHallStats(userProfileId: string) {
     try {
+      // First, get the city hall record for this user
+      const { data: cityHall, error: chError } = await supabase
+        .from('city_halls')
+        .select('id')
+        .eq('profile_id', userProfileId)
+        .maybeSingle();
+
+      if (chError) throw chError;
+      if (!cityHall) {
+        return {
+          data: {
+            activeServiceOrders: 0,
+            pendingQuotes: 0,
+            recentServiceOrders: []
+          },
+          error: null
+        };
+      }
+
       // Get active service orders
       const { data: serviceOrders, error: soError } = await supabase
         .from('service_orders')
-        .select('id, status, created_at')
-        .eq('city_hall_id', cityHallId);
+        .select('id, status, created_at, number')
+        .eq('city_hall_id', cityHall.id);
 
       if (soError) throw soError;
 
@@ -37,12 +56,32 @@ export const dashboardService = {
   },
 
   // Get dashboard stats for Workshop users
-  async getWorkshopStats(workshopId: string) {
+  async getWorkshopStats(userProfileId: string) {
     try {
+      // First, get the workshop record for this user
+      const { data: workshop, error: wError } = await supabase
+        .from('workshops')
+        .select('id')
+        .eq('profile_id', userProfileId)
+        .maybeSingle();
+
+      if (wError) throw wError;
+      if (!workshop) {
+        return {
+          data: {
+            availableOrders: 0,
+            submittedQuotes: 0,
+            acceptedQuotes: 0,
+            recentOrders: []
+          },
+          error: null
+        };
+      }
+
       // Get available service orders (sent for quotes but workshop hasn't quoted yet)
       const { data: availableOrders, error: aoError } = await supabase
         .from('service_orders')
-        .select('id, status, created_at')
+        .select('id, status, created_at, number')
         .eq('status', 'SENT_FOR_QUOTES');
 
       if (aoError) throw aoError;
@@ -51,7 +90,7 @@ export const dashboardService = {
       const { data: quotes, error: quotesError } = await supabase
         .from('quotes')
         .select('id, status, created_at, service_order_id')
-        .eq('workshop_id', workshopId);
+        .eq('workshop_id', workshop.id);
 
       if (quotesError) throw quotesError;
 

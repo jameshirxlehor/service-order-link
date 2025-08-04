@@ -1,6 +1,6 @@
 
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useSupabaseAuth = () => {
   const login = async (email: string, password: string) => {

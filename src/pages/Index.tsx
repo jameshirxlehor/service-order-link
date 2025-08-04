@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { checkSupabaseConnection } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -15,13 +15,16 @@ const Index = () => {
     
     const checkConnection = async () => {
       try {
-        const isConnected = await checkSupabaseConnection();
-        if (!isConnected) {
+        const { data, error } = await supabase.from('user_profiles').select('id').limit(1);
+        if (error) {
+          console.error('Supabase connection error:', error);
           toast({
             title: "Erro de conexão",
             description: "Não foi possível conectar ao banco de dados. Verifique sua conexão.",
             variant: "destructive"
           });
+        } else {
+          console.log('Supabase connection successful');
         }
       } catch (error) {
         console.error("Index page - Connection check error:", error);

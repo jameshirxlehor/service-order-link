@@ -16,7 +16,7 @@ import MyQuotes from "./pages/MyQuotes";
 import AdminUsers from "./pages/AdminUsers";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
-import { UserRole } from "./types";
+import { UserType } from "./types";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,7 +44,7 @@ const App = () => (
               <Route path="/service-orders" element={<ServiceOrders />} />
               
               {/* City Hall Only Routes */}
-              <Route element={<ProtectedRoute allowedRoles={[UserRole.CITY_HALL]} />}>
+              <Route element={<ProtectedRoute allowedRoles={[UserType.CITY_HALL]} />}>
                 <Route path="/service-orders/new" element={<ServiceOrderForm />} />
                 <Route path="/service-orders/:id/edit" element={<ServiceOrderForm />} />
               </Route>
@@ -55,7 +55,7 @@ const App = () => (
               <Route path="/my-quotes" element={<MyQuotes />} />
               
               {/* Admin Only Routes */}
-              <Route element={<ProtectedRoute allowedRoles={[UserRole.GENERAL_ADMIN]} />}>
+              <Route element={<ProtectedRoute allowedRoles={[UserType.GENERAL_ADMIN]} />}>
                 <Route path="/admin/users" element={<AdminUsers />} />
               </Route>
             </Route>
