@@ -2,6 +2,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import { UserType } from "@/types";
+import { dashboardService } from "@/services/dashboardService";
 import {
   Card,
   CardContent,
@@ -25,10 +26,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   if (!user) return null;
 
@@ -36,6 +40,34 @@ const Dashboard = () => {
   const isWorkshop = user.user_type === UserType.WORKSHOP;
   const isQueryAdmin = user.user_type === UserType.QUERY_ADMIN;
   const isGeneralAdmin = user.user_type === UserType.GENERAL_ADMIN;
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        let result;
+        if (isCityHall) {
+          result = await dashboardService.getCityHallStats(user.id);
+        } else if (isWorkshop) {
+          result = await dashboardService.getWorkshopStats(user.id);
+        } else if (isQueryAdmin) {
+          result = await dashboardService.getQueryAdminStats();
+        } else if (isGeneralAdmin) {
+          result = await dashboardService.getGeneralAdminStats();
+        }
+        
+        if (result?.data) {
+          setStats(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user.id, user.user_type, isCityHall, isWorkshop, isQueryAdmin, isGeneralAdmin]);
 
   return (
     <MainLayout>
@@ -58,12 +90,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">
-                    +2 from last week
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.activeServiceOrders || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     Current active orders
+                   </p>
+                 </CardContent>
               </Card>
 
               <Card>
@@ -73,12 +107,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <Calculator className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">7</div>
-                  <p className="text-xs text-muted-foreground">
-                    5 need review
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.pendingQuotes || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     Awaiting review
+                   </p>
+                 </CardContent>
               </Card>
             </>
           )}
@@ -92,12 +128,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">8</div>
-                  <p className="text-xs text-muted-foreground">
-                    Pending quotes
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.availableOrders || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     Available for quotes
+                   </p>
+                 </CardContent>
               </Card>
 
               <Card>
@@ -107,12 +145,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <Calculator className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">15</div>
-                  <p className="text-xs text-muted-foreground">
-                    3 accepted this month
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.submittedQuotes || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     {loading ? "..." : stats?.acceptedQuotes || 0} accepted
+                   </p>
+                 </CardContent>
               </Card>
             </>
           )}
@@ -126,12 +166,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <Building className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">5</div>
-                  <p className="text-xs text-muted-foreground">
-                    Active accounts
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.cityHallsCount || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     Active accounts
+                   </p>
+                 </CardContent>
               </Card>
 
               <Card>
@@ -141,12 +183,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <Wrench className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">12</div>
-                  <p className="text-xs text-muted-foreground">
-                    3 new this month
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.workshopsCount || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     Active workshops
+                   </p>
+                 </CardContent>
               </Card>
             </>
           )}
@@ -160,12 +204,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">367</div>
-                  <p className="text-xs text-muted-foreground">
-                    All time
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.totalServiceOrders || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     All time
+                   </p>
+                 </CardContent>
               </Card>
 
               <Card>
@@ -175,12 +221,14 @@ const Dashboard = () => {
                   </CardTitle>
                   <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">284</div>
-                  <p className="text-xs text-muted-foreground">
-                    77% completion rate
-                  </p>
-                </CardContent>
+                 <CardContent>
+                   <div className="text-2xl font-bold">
+                     {loading ? "..." : stats?.completedOrders || 0}
+                   </div>
+                   <p className="text-xs text-muted-foreground">
+                     {loading ? "..." : stats?.totalServiceOrders ? Math.round((stats.completedOrders / stats.totalServiceOrders) * 100) : 0}% completion rate
+                   </p>
+                 </CardContent>
               </Card>
             </>
           )}
@@ -204,44 +252,50 @@ const Dashboard = () => {
                 {isGeneralAdmin && "Recently created service orders"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between border-b pb-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-full p-1 bg-primary/10">
-                        {isCityHall || isGeneralAdmin || isQueryAdmin ? (
-                          <FileText className="h-4 w-4 text-primary" />
-                        ) : (
-                          <ClipboardList className="h-4 w-4 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          Service Order #{1000 + i}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {isCityHall && "Sent to 3 workshops"}
-                          {isWorkshop && "Toyota Corolla - Brake Service"}
-                          {isQueryAdmin && "New quote from Workshop #3"}
-                          {isGeneralAdmin &&
-                            "Created by City Hall - Municipal Services"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {i === 1 ? "Today" : `${i} days ago`}
-                      </span>
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+             <CardContent>
+               <div className="space-y-4">
+                 {loading ? (
+                   <div className="text-center py-4">Loading...</div>
+                 ) : (
+                   stats?.recentServiceOrders?.length > 0 || stats?.recentOrders?.length > 0 || stats?.recentActivity?.length > 0 ? (
+                     (stats?.recentServiceOrders || stats?.recentOrders || stats?.recentActivity || []).slice(0, 5).map((item: any, i: number) => (
+                       <div
+                         key={item.id || i}
+                         className="flex items-center justify-between border-b pb-2"
+                       >
+                         <div className="flex items-center gap-2">
+                           <div className="rounded-full p-1 bg-primary/10">
+                             {isCityHall || isGeneralAdmin || isQueryAdmin ? (
+                               <FileText className="h-4 w-4 text-primary" />
+                             ) : (
+                               <ClipboardList className="h-4 w-4 text-primary" />
+                             )}
+                           </div>
+                           <div>
+                             <p className="text-sm font-medium">
+                               Service Order #{item.number || item.id?.slice(-6) || 'N/A'}
+                             </p>
+                             <p className="text-xs text-muted-foreground">
+                               Status: {item.status || 'Unknown'}
+                             </p>
+                           </div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <span className="text-xs text-muted-foreground">
+                             {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
+                           </span>
+                           <Button variant="ghost" size="sm">
+                             View
+                           </Button>
+                         </div>
+                       </div>
+                     ))
+                   ) : (
+                     <div className="text-center py-4 text-muted-foreground">
+                       No recent items
+                     </div>
+                   )
+                 )}
 
                 <Button
                   variant="outline"
@@ -274,30 +328,13 @@ const Dashboard = () => {
               <div className="space-y-4">
                 {isCityHall && (
                   <>
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between border-b pb-4"
-                      >
-                        <div>
-                          <p className="text-sm font-medium">
-                            Quote #{2000 + i}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Workshop {i + 2}
-                          </p>
-                          <p className="text-xs font-medium mt-1">
-                            R$ {(1500 * i).toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="destructive">
-                            Reject
-                          </Button>
-                          <Button size="sm">Accept</Button>
-                        </div>
-                      </div>
-                    ))}
+                     {loading ? (
+                       <div className="text-center py-4">Loading...</div>
+                     ) : (
+                       <div className="text-center py-4 text-muted-foreground">
+                         No pending quotes
+                       </div>
+                     )}
                   </>
                 )}
 
@@ -307,30 +344,36 @@ const Dashboard = () => {
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Accepted</p>
-                        <p className="text-2xl font-bold">3</p>
-                      </div>
+                       <div>
+                         <p className="text-sm font-medium">Accepted</p>
+                         <p className="text-2xl font-bold">
+                           {loading ? "..." : stats?.acceptedQuotes || 0}
+                         </p>
+                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
                         <Clock className="h-5 w-5 text-yellow-600" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Pending</p>
-                        <p className="text-2xl font-bold">5</p>
-                      </div>
+                       <div>
+                         <p className="text-sm font-medium">Pending</p>
+                         <p className="text-2xl font-bold">
+                           {loading ? "..." : (stats?.submittedQuotes - stats?.acceptedQuotes) || 0}
+                         </p>
+                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                         <AlertTriangle className="h-5 w-5 text-red-600" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Rejected</p>
-                        <p className="text-2xl font-bold">2</p>
-                      </div>
+                       <div>
+                         <p className="text-sm font-medium">Total Submitted</p>
+                         <p className="text-2xl font-bold">
+                           {loading ? "..." : stats?.submittedQuotes || 0}
+                         </p>
+                       </div>
                     </div>
                   </div>
                 )}
@@ -341,30 +384,36 @@ const Dashboard = () => {
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
                         <FileText className="h-5 w-5 text-blue-600" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Total Orders</p>
-                        <p className="text-2xl font-bold">367</p>
-                      </div>
+                       <div>
+                         <p className="text-sm font-medium">Total Orders</p>
+                         <p className="text-2xl font-bold">
+                           {loading ? "..." : stats?.totalServiceOrders || 0}
+                         </p>
+                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">284</p>
-                      </div>
+                       <div>
+                         <p className="text-sm font-medium">Completed</p>
+                         <p className="text-2xl font-bold">
+                           {loading ? "..." : stats?.completedOrders || 0}
+                         </p>
+                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
                         <TrendingUp className="h-5 w-5 text-purple-600" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Avg. Time</p>
-                        <p className="text-2xl font-bold">3.5 days</p>
-                      </div>
+                       <div>
+                         <p className="text-sm font-medium">Active</p>
+                         <p className="text-2xl font-bold">
+                           {loading ? "..." : (stats?.totalServiceOrders - stats?.completedOrders) || 0}
+                         </p>
+                       </div>
                     </div>
 
                     {isGeneralAdmin && (
@@ -373,10 +422,12 @@ const Dashboard = () => {
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
                             <Users className="h-5 w-5 text-amber-600" />
                           </div>
-                          <div>
-                            <p className="text-sm font-medium">Total Users</p>
-                            <p className="text-2xl font-bold">28</p>
-                          </div>
+                           <div>
+                             <p className="text-sm font-medium">Total Users</p>
+                             <p className="text-2xl font-bold">
+                               {loading ? "..." : stats?.totalUsers || 0}
+                             </p>
+                           </div>
                         </div>
                       </>
                     )}

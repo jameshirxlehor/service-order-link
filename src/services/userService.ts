@@ -1,4 +1,5 @@
 import { UserProfile, UserType } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data for development when database is empty
 const mockUsers: (UserProfile & { 
@@ -123,14 +124,39 @@ export const userService = {
   // Get all users
   async getAllUsers(roleFilter?: string) {
     try {
-      // Use mock data for development
-      let filteredMockData = mockUsers;
-      
+      let query = supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
       if (roleFilter && roleFilter !== 'all') {
-        filteredMockData = mockUsers.filter(user => user.user_type === roleFilter);
+        query = query.eq('role', roleFilter);
       }
-      
-      return { data: filteredMockData, error: null };
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+      }
+
+      // Transform data to match expected format
+      const transformedData = data?.map(user => ({
+        ...user,
+        user_type: user.role as UserType,
+        login_number: user.login,
+        trade_name: user.name,
+        responsible_email: user.name, // Placeholder
+        contact_phone: user.phone,
+        // Legacy compatibility
+        name: user.name,
+        email: user.name, // Placeholder
+        phone: user.phone,
+        login: user.login,
+        role: user.role as UserType
+      })) || [];
+
+      return { data: transformedData, error: null };
     } catch (error) {
       console.error('Error fetching users:', error);
       return { data: [], error };
@@ -140,12 +166,38 @@ export const userService = {
   // Get user by ID
   async getUserById(id: string) {
     try {
-      // Use mock data for development
-      const mockData = mockUsers.find(user => user.id === id);
-      if (mockData) {
-        return { data: mockData, error: null };
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user:', error);
+        throw error;
       }
-      return { data: null, error: new Error('User not found') };
+
+      if (!data) {
+        return { data: null, error: new Error('User not found') };
+      }
+
+      // Transform data to match expected format
+      const transformedData = {
+        ...data,
+        user_type: data.role as UserType,
+        login_number: data.login,
+        trade_name: data.name,
+        responsible_email: data.name, // Placeholder
+        contact_phone: data.phone,
+        // Legacy compatibility
+        name: data.name,
+        email: data.name, // Placeholder
+        phone: data.phone,
+        login: data.login,
+        role: data.role as UserType
+      };
+
+      return { data: transformedData, error: null };
     } catch (error) {
       console.error('Error fetching user:', error);
       return { data: null, error };

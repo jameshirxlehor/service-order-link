@@ -1,4 +1,5 @@
 import { Quote, QuoteStatus } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data for development until Supabase schema is ready
 const mockQuotes: Quote[] = [
@@ -86,19 +87,44 @@ const mockQuotes: Quote[] = [
 export const quoteService = {
   // Get all quotes for a specific service order
   async getQuotesByServiceOrderId(serviceOrderId: string) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const quotes = mockQuotes.filter(q => q.service_order_id === serviceOrderId);
-    return { data: quotes, error: null };
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('service_order_id', serviceOrderId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching quotes:', error);
+        throw error;
+      }
+
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('Error fetching quotes:', error);
+      return { data: [], error };
+    }
   },
 
   // Get a specific quote by ID
   async getQuoteById(quoteId: string) {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const quote = mockQuotes.find(q => q.id === quoteId);
-    return quote ? { data: quote, error: null } : { data: null, error: new Error('Quote not found') };
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching quote:', error);
+        throw error;
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error fetching quote:', error);
+      return { data: null, error };
+    }
   },
 
   // Create a new quote (for workshops)
@@ -108,46 +134,69 @@ export const quoteService = {
     notes?: string;
     estimated_delivery_days?: number;
   }) {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const newQuote: Quote = {
-      id: `quote-${Date.now()}`,
-      ...quoteData,
-      quote_date: new Date().toISOString(),
-      validity_days: 30,
-      total_parts_without_discount: 0,
-      total_parts_discount: 0,
-      total_parts_with_discount: 0,
-      total_labor_without_discount: 0,
-      total_labor_discount: 0,
-      total_labor_with_discount: 0,
-      total_without_discount: 0,
-      total_discount: 0,
-      total_with_discount: 0,
-      status: QuoteStatus.PENDING,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    return { data: newQuote, error: null };
+    try {
+      const insertData = {
+        service_order_id: quoteData.service_order_id,
+        workshop_id: quoteData.workshop_id,
+        date: new Date().toISOString(),
+        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        estimated_delivery_days: quoteData.estimated_delivery_days || 3,
+        estimated_start_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+        items: [],
+        totals: {
+          labor_subtotal: 0,
+          parts_subtotal: 0,
+          labor_discount: 0,
+          parts_discount: 0,
+          subtotal: 0,
+          taxes: 0,
+          total: 0
+        },
+        status: 'PENDING',
+        service_location: "Workshop Address",
+        notes: quoteData.notes || ""
+      };
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating quote:', error);
+        throw error;
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error creating quote:', error);
+      return { data: null, error };
+    }
   },
 
   // Update quote status
   async updateQuoteStatus(quoteId: string, status: QuoteStatus) {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const quote = mockQuotes.find(q => q.id === quoteId);
-    if (quote) {
-      quote.status = status;
-      quote.updated_at = new Date().toISOString();
-      
-      if (status === QuoteStatus.SUBMITTED) {
-        quote.submitted_at = new Date().toISOString();
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .update({
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', quoteId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating quote status:', error);
+        throw error;
       }
-      
-      return { data: quote, error: null };
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error updating quote status:', error);
+      return { data: null, error };
     }
-    
-    return { data: null, error: new Error('Quote not found') };
   },
 };

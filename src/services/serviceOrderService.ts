@@ -1,11 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "@/integrations/supabase/client";
 import { ServiceOrder, ServiceOrderStatus, VehicleType, FuelType, TransmissionType, ServiceType } from '@/types';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dybrlyssenhxbpnfhiwb.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5YnJseXNzZW5oeGJwbmZoaXdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NzA2NTgsImV4cCI6MjA2MDM0NjY1OH0.qeByyMkxftSK5P9JfDo5FFmq8Na4DgYlPTRxvWNcEuU';
-
-// Create untyped client to avoid infinite type recursion
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Mock data for development when database is empty
 const mockServiceOrders: ServiceOrder[] = [
@@ -83,19 +77,7 @@ export const serviceOrderService = {
 
       const { data, error } = await query;
 
-      // If no data from database, use mock data for development
-      if (!data || data.length === 0) {
-        let filteredMockData = mockServiceOrders;
-        
-        if (userType === 'CITY_HALL') {
-          filteredMockData = mockServiceOrders.filter(os => os.city_hall_id === userId);
-        } else if (userType === 'WORKSHOP') {
-          filteredMockData = mockServiceOrders.filter(os => os.status === ServiceOrderStatus.SENT_FOR_QUOTES);
-        }
-        
-        return { data: filteredMockData, error: null };
-      }
-
+      // Return real data from database
       if (error) {
         console.error('Error fetching service orders:', error);
         throw error;
@@ -117,14 +99,6 @@ export const serviceOrderService = {
         .eq('id', id)
         .single();
 
-      // If no data from database, check mock data
-      if (!data) {
-        const mockData = mockServiceOrders.find(os => os.id === id);
-        if (mockData) {
-          return { data: mockData, error: null };
-        }
-      }
-
       if (error) {
         console.error('Error fetching service order:', error);
         throw error;
@@ -133,11 +107,6 @@ export const serviceOrderService = {
       return { data, error: null };
     } catch (error) {
       console.error('Service order fetch error:', error);
-      // Try mock data as fallback
-      const mockData = mockServiceOrders.find(os => os.id === id);
-      if (mockData) {
-        return { data: mockData, error: null };
-      }
       return { data: null, error };
     }
   },
