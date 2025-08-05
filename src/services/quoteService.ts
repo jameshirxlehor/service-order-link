@@ -136,29 +136,35 @@ export const quoteService = {
   async createQuote(quoteData: {
     service_order_id: string;
     workshop_id: string;
-    notes?: string;
+    date?: string;
+    valid_until?: string;
     estimated_delivery_days?: number;
+    estimated_start_date?: string;
+    service_location?: string;
+    notes?: string;
+    status?: string;
+    items?: any[];
+    totals?: any;
   }) {
     try {
       const insertData = {
         service_order_id: quoteData.service_order_id,
         workshop_id: quoteData.workshop_id,
-        date: new Date().toISOString(),
-        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        date: quoteData.date || new Date().toISOString(),
+        valid_until: quoteData.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         estimated_delivery_days: quoteData.estimated_delivery_days || 3,
-        estimated_start_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-        items: [],
-        totals: {
+        estimated_start_date: quoteData.estimated_start_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        items: quoteData.items || [],
+        totals: quoteData.totals || {
           labor_subtotal: 0,
           parts_subtotal: 0,
           labor_discount: 0,
           parts_discount: 0,
           subtotal: 0,
-          taxes: 0,
           total: 0
         },
-        status: 'PENDING',
-        service_location: "Workshop Address",
+        status: quoteData.status || 'PENDING',
+        service_location: quoteData.service_location || "Na oficina",
         notes: quoteData.notes || ""
       };
 

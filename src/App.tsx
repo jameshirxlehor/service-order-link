@@ -13,6 +13,7 @@ import ServiceOrderForm from "./pages/ServiceOrderForm";
 import ServiceOrderDetail from "./pages/ServiceOrderDetail";
 import ServiceOrderQuotes from "./pages/ServiceOrderQuotes";
 import MyQuotes from "./pages/MyQuotes";
+import QuoteForm from "./pages/QuoteForm";
 import AdminUsers from "./pages/AdminUsers";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -44,6 +45,9 @@ const App = () => (
             <Route path="/service-orders/:id" element={<ProtectedRoute><ServiceOrderDetail /></ProtectedRoute>} />
             <Route path="/service-orders/:id/quotes" element={<ProtectedRoute><ServiceOrderQuotes /></ProtectedRoute>} />
             <Route path="/my-quotes" element={<ProtectedRoute><MyQuotes /></ProtectedRoute>} />
+            
+            {/* Workshop Routes */}
+            <Route path="/service-orders/:id/quote/new" element={<ProtectedRoute allowedRoles={[UserType.WORKSHOP]}><QuoteForm /></ProtectedRoute>} />
             
             {/* City Hall Only Routes */}
             <Route path="/service-orders/new" element={<ProtectedRoute allowedRoles={[UserType.CITY_HALL]}><ServiceOrderForm /></ProtectedRoute>} />
