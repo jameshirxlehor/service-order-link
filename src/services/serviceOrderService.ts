@@ -62,7 +62,16 @@ export const serviceOrderService = {
     try {
       let query = supabase
         .from('service_orders')
-        .select('*')
+        .select(`
+          id,
+          number,
+          city_hall_id,
+          status,
+          created_at,
+          updated_at,
+          vehicle,
+          service_info
+        `)
         .order('created_at', { ascending: false });
 
       // Filter based on user type
@@ -77,16 +86,46 @@ export const serviceOrderService = {
 
       const { data, error } = await query;
 
-      // Return real data from database
       if (error) {
         console.error('Error fetching service orders:', error);
-        throw error;
+        return { data: [], error };
       }
 
-      return { data: data || [], error: null };
+      // Transform data to match expected format
+      const transformedData = (data || []).map((order: any) => ({
+        id: order.id,
+        os_number: order.number,
+        city_hall_id: order.city_hall_id,
+        status: order.status,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        // Vehicle data
+        vehicle_type: order.vehicle?.type || 'CAR',
+        brand: order.vehicle?.brand || '',
+        model: order.vehicle?.model || '',
+        year: order.vehicle?.year || null,
+        license_plate: order.vehicle?.license_plate || '',
+        fuel: order.vehicle?.fuel || 'GASOLINE',
+        transmission: order.vehicle?.transmission || 'MANUAL',
+        color: order.vehicle?.color || '',
+        engine: order.vehicle?.engine || '',
+        chassis: order.vehicle?.chassis || '',
+        km: order.vehicle?.km || 0,
+        vehicle_market_value: order.vehicle?.market_value || 0,
+        registration: order.vehicle?.registration || '',
+        tank_capacity: order.vehicle?.tank_capacity || 0,
+        // Service data
+        service_type: order.service_info?.type || 'MAINTENANCE',
+        service_category: order.service_info?.category || '',
+        service_city: order.service_info?.city || '',
+        vehicle_location: order.service_info?.location || '',
+        notes: order.service_info?.notes || ''
+      }));
+
+      return { data: transformedData, error: null };
     } catch (error) {
       console.error('Service order fetch error:', error);
-      return { data: null, error };
+      return { data: [], error };
     }
   },
 
@@ -118,29 +157,34 @@ export const serviceOrderService = {
       const timestamp = Date.now();
       const osNumber = `OS${timestamp.toString().slice(-6)}`;
 
-      const insertData: any = {
-        os_number: osNumber,
+      const insertData = {
+        number: osNumber,
         city_hall_id: serviceOrderData.city_hall_id || '',
         status: 'DRAFT',
-        vehicle_type: serviceOrderData.vehicle_type || 'CAR',
-        brand: serviceOrderData.brand || '',
-        model: serviceOrderData.model || '',
-        fuel: serviceOrderData.fuel || 'GASOLINE',
-        year: serviceOrderData.year || null,
-        engine: serviceOrderData.engine || '',
-        color: serviceOrderData.color || '',
-        transmission: serviceOrderData.transmission || 'MANUAL',
-        license_plate: serviceOrderData.license_plate || '',
-        chassis: serviceOrderData.chassis || '',
-        km: serviceOrderData.km || 0,
-        vehicle_market_value: serviceOrderData.vehicle_market_value || 0,
-        registration: serviceOrderData.registration || '',
-        tank_capacity: serviceOrderData.tank_capacity || 0,
-        service_city: serviceOrderData.service_city || '',
-        service_type: serviceOrderData.service_type || 'MAINTENANCE',
-        service_category: serviceOrderData.service_category || '',
-        vehicle_location: serviceOrderData.vehicle_location || '',
-        notes: serviceOrderData.notes || ''
+        vehicle: {
+          type: serviceOrderData.vehicle_type || 'CAR',
+          brand: serviceOrderData.brand || '',
+          model: serviceOrderData.model || '',
+          year: serviceOrderData.year || null,
+          license_plate: serviceOrderData.license_plate || '',
+          fuel: serviceOrderData.fuel || 'GASOLINE',
+          transmission: serviceOrderData.transmission || 'MANUAL',
+          color: serviceOrderData.color || '',
+          engine: serviceOrderData.engine || '',
+          chassis: serviceOrderData.chassis || '',
+          km: serviceOrderData.km || 0,
+          market_value: serviceOrderData.vehicle_market_value || 0,
+          registration: serviceOrderData.registration || '',
+          tank_capacity: serviceOrderData.tank_capacity || 0
+        },
+        service_info: {
+          type: serviceOrderData.service_type || 'MAINTENANCE',
+          category: serviceOrderData.service_category || '',
+          city: serviceOrderData.service_city || '',
+          location: serviceOrderData.vehicle_location || '',
+          notes: serviceOrderData.notes || ''
+        },
+        sent_to_workshops: []
       };
 
       const { data, error } = await supabase

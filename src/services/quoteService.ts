@@ -86,6 +86,11 @@ const mockQuotes: Quote[] = [
 
 export const quoteService = {
   // Get all quotes for a specific service order
+  async getQuotesForServiceOrder(serviceOrderId: string) {
+    return this.getQuotesByServiceOrderId(serviceOrderId);
+  },
+
+  // Get all quotes for a specific service order
   async getQuotesByServiceOrderId(serviceOrderId: string) {
     try {
       const { data, error } = await supabase
