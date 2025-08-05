@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { quoteService } from '@/services/quoteService';
@@ -20,9 +19,7 @@ import {
   Trash2, 
   Loader2, 
   FileText, 
-  Calendar,
-  MapPin,
-  Clock
+  Calendar
 } from 'lucide-react';
 
 const quoteItemSchema = z.object({
@@ -41,7 +38,6 @@ const quoteSchema = z.object({
   service_location: z.string().min(1, 'Local do serviço é obrigatório'),
   notes: z.string().optional(),
   items: z.array(quoteItemSchema).min(1, 'Adicione pelo menos um item'),
-  // Discount fields
   parts_discount_percentage: z.number().min(0).max(100).optional(),
   labor_discount_percentage: z.number().min(0).max(100).optional(),
 });
@@ -444,137 +440,21 @@ const QuoteFormComponent = ({ serviceOrder }: QuoteFormComponentProps) => {
                       </div>
                     </div>
                   </div>
-
-                  {watchedItems[index]?.category === 'PARTS' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.brand`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Marca da Peça</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: Bosch" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.part_number`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Código da Peça</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ex: 0280158017" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          {/* Discounts and Totals */}
+          {/* Totals */}
           <Card>
             <CardHeader>
-              <CardTitle>Descontos e Totais</CardTitle>
+              <CardTitle>Totais</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="parts_discount_percentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Desconto em Peças (%)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="labor_discount_percentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Desconto em Mão de Obra (%)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal Peças:</span>
-                    <span>R$ {totals.partsSubtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Desconto Peças ({partsDiscount}%):</span>
-                    <span>- R$ {totals.partsDiscountAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Total Peças:</span>
-                    <span>R$ {totals.partsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal Mão de Obra:</span>
-                    <span>R$ {totals.laborSubtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Desconto M.O. ({laborDiscount}%):</span>
-                    <span>- R$ {totals.laborDiscountAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Total Mão de Obra:</span>
-                    <span>R$ {totals.laborTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
+            <CardContent>
               <div className="text-right space-y-2">
                 <div className="flex justify-between text-lg">
-                  <span>Subtotal Geral:</span>
+                  <span>Subtotal:</span>
                   <span>R$ {totals.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Desconto Total:</span>
-                  <span>- R$ {totals.totalDiscount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold text-primary">
                   <span>TOTAL FINAL:</span>
