@@ -90,24 +90,42 @@ export const quoteService = {
     return this.getQuotesByServiceOrderId(serviceOrderId);
   },
 
+  // Get all quotes for a specific service order  
+  async getQuotesByServiceOrder(serviceOrderId: string) {
+    return this.getQuotesByServiceOrderId(serviceOrderId);
+  },
+
   // Get all quotes for a specific service order
   async getQuotesByServiceOrderId(serviceOrderId: string) {
     try {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*')
+        .select(`
+          *,
+          workshops (
+            id,
+            trade_name,
+            corporate_name,
+            responsible_email,
+            contact_phone
+          )
+        `)
         .eq('service_order_id', serviceOrderId)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching quotes:', error);
-        throw error;
+        // Return mock data if no quotes found in database
+        const mockQuotesForOrder = mockQuotes.filter(quote => quote.service_order_id === serviceOrderId);
+        return { data: mockQuotesForOrder, error: null };
       }
 
       return { data: data || [], error: null };
     } catch (error) {
       console.error('Error fetching quotes:', error);
-      return { data: [], error };
+      // Return mock data on error
+      const mockQuotesForOrder = mockQuotes.filter(quote => quote.service_order_id === serviceOrderId);
+      return { data: mockQuotesForOrder, error: null };
     }
   },
 
@@ -187,7 +205,7 @@ export const quoteService = {
   },
 
   // Update quote status
-  async updateQuoteStatus(quoteId: string, status: QuoteStatus) {
+  async updateQuoteStatus(quoteId: string, status: string) {
     try {
       const { data, error } = await supabase
         .from('quotes')

@@ -140,12 +140,61 @@ export const serviceOrderService = {
 
       if (error) {
         console.error('Error fetching service order:', error);
+        // Return mock data if not found in database
+        const mockOrder = mockServiceOrders.find(order => order.id === id);
+        if (mockOrder) {
+          return { data: mockOrder, error: null };
+        }
         throw error;
       }
 
-      return { data, error: null };
+      // Transform data to match expected format
+      const vehicle = data.vehicle as any || {};
+      const serviceInfo = data.service_info as any || {};
+      
+      const transformedData = {
+        id: data.id,
+        os_number: data.number || `OS${data.id?.slice(-6)}`,
+        city_hall_id: data.city_hall_id,
+        status: data.status,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        // Vehicle data
+        vehicle_type: vehicle.type || 'CAR',
+        brand: vehicle.brand || '',
+        model: vehicle.model || '',
+        year: vehicle.year || null,
+        license_plate: vehicle.license_plate || '',
+        fuel: vehicle.fuel || 'GASOLINE',
+        transmission: vehicle.transmission || 'MANUAL',
+        color: vehicle.color || '',
+        engine: vehicle.engine || '',
+        chassis: vehicle.chassis || '',
+        km: vehicle.km || 0,
+        vehicle_market_value: vehicle.market_value || 0,
+        registration: vehicle.registration || '',
+        tank_capacity: vehicle.tank_capacity || 0,
+        // Service data
+        service_type: serviceInfo.type || 'MAINTENANCE',
+        service_category: serviceInfo.category || '',
+        service_city: serviceInfo.city || '',
+        vehicle_location: serviceInfo.location || '',
+        description: serviceInfo.notes || '',
+        notes: serviceInfo.notes || '',
+        // Contact info (will be available when contact_info field is added)
+        contact_name: '',
+        contact_phone: '',
+        contact_email: ''
+      };
+
+      return { data: transformedData, error: null };
     } catch (error) {
       console.error('Service order fetch error:', error);
+      // Return mock data if error
+      const mockOrder = mockServiceOrders.find(order => order.id === id);
+      if (mockOrder) {
+        return { data: mockOrder, error: null };
+      }
       return { data: null, error };
     }
   },

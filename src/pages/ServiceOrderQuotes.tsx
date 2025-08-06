@@ -7,17 +7,36 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Building2, Phone, Mail, MapPin, Calendar, DollarSign, Clock, FileText, Loader2 } from "lucide-react";
-import { Quote, QuoteStatus, UserType } from "@/types";
+import { UserType } from "@/types";
 import { quoteService } from "@/services/quoteService";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+
+interface SimpleQuote {
+  id: string;
+  service_order_id: string;
+  workshop_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  estimated_delivery_days?: number;
+  notes: string;
+  total_with_discount?: number;
+  workshop?: {
+    id: string;
+    trade_name: string;
+    corporate_name: string;
+    responsible_email: string;
+    contact_phone: string;
+  };
+}
 
 const ServiceOrderQuotes = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quotes, setQuotes] = useState<SimpleQuote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,7 +61,21 @@ const ServiceOrderQuotes = () => {
         return;
       }
       
-      setQuotes(data || []);
+      // Transform data to match our SimpleQuote interface
+      const transformedData = (data || []).map((quote: any) => ({
+        id: quote.id,
+        service_order_id: quote.service_order_id,
+        workshop_id: quote.workshop_id || quote.workshop?.id,
+        status: quote.status,
+        created_at: quote.created_at,
+        updated_at: quote.updated_at,
+        estimated_delivery_days: quote.estimated_delivery_days,
+        notes: quote.notes || '',
+        total_with_discount: quote.total_with_discount || quote.totals?.total,
+        workshop: quote.workshop || quote.workshops
+      }));
+      
+      setQuotes(transformedData);
     } catch (error) {
       console.error('Error fetching quotes:', error);
       toast({
@@ -55,16 +88,16 @@ const ServiceOrderQuotes = () => {
     }
   };
 
-  const getStatusBadge = (status: QuoteStatus) => {
-    const statusConfig = {
-      [QuoteStatus.PENDING]: { label: "Pendente", variant: "secondary" as const },
-      [QuoteStatus.SUBMITTED]: { label: "Enviado", variant: "default" as const },
-      [QuoteStatus.ACCEPTED]: { label: "Aceito", variant: "success" as const },
-      [QuoteStatus.REJECTED]: { label: "Rejeitado", variant: "destructive" as const },
-      [QuoteStatus.CANCELLED]: { label: "Cancelado", variant: "destructive" as const },
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { label: string; variant: "secondary" | "default" | "success" | "destructive" }> = {
+      PENDING: { label: "Pendente", variant: "secondary" },
+      SUBMITTED: { label: "Enviado", variant: "default" },
+      ACCEPTED: { label: "Aceito", variant: "success" },
+      REJECTED: { label: "Rejeitado", variant: "destructive" },
+      CANCELLED: { label: "Cancelado", variant: "destructive" },
     };
 
-    const config = statusConfig[status] || { label: status, variant: "secondary" as const };
+    const config = statusConfig[status] || { label: status, variant: "secondary" };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -152,10 +185,10 @@ const ServiceOrderQuotes = () => {
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
                         <DollarSign className="h-6 w-6 text-green-600" />
-                        <div>
+                       <div>
                           <p className="text-sm font-medium text-muted-foreground">Valor Total</p>
                           <p className="text-2xl font-bold text-green-600">
-                            {formatCurrency(quote.total_with_discount)}
+                            {formatCurrency(quote.total_with_discount || 0)}
                           </p>
                         </div>
                       </div>
@@ -206,7 +239,7 @@ const ServiceOrderQuotes = () => {
                     </>
                   )}
 
-                  {user.user_type === UserType.CITY_HALL && quote.status === QuoteStatus.SUBMITTED && (
+                  {user.user_type === UserType.CITY_HALL && quote.status === 'SUBMITTED' && (
                     <>
                       <Separator />
                       <div className="flex gap-3 justify-end">
